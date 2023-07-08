@@ -1,0 +1,4 @@
+GET {{MEMBER}}/member/hello
+Accept: application/json
+
+###
