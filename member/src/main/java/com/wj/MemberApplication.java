@@ -1,13 +1,11 @@
-package com.wj.train;
+package com.wj;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class TrainApplication {
-
+public class MemberApplication {
     public static void main(String[] args) {
-        SpringApplication.run(TrainApplication.class, args);
+        SpringApplication.run(MemberApplication.class, args);
     }
-
 }
