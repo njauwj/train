@@ -5,3 +5,12 @@ server:
 spring:
   application:
     name: member
+  # 数据库连接
+  datasource:
+    url: jdbc:mysql://localhost:3307/train_member?characterEncoding=UTF8&autoReconnect=true&serverTimezone=Asia/Shanghai
+    username: root
+    password: "010622wj"
+    driver-class-name: com.mysql.jdbc.Driver
+logging:
+  level:
+    com.wj.train.member.mapper: trace
