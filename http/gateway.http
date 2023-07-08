@@ -1,0 +1,4 @@
+GET {{GATEWAY}}/member/hello
+Accept: application/json
+
+###
