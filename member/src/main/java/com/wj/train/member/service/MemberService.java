@@ -1,7 +1,8 @@
 package com.wj.train.member.service;
 
 import com.wj.train.common.resp.CommonResp;
-import com.wj.train.member.req.MemberRegisterReq;
+import com.wj.train.member.req.MemberLoginReq;
+import com.wj.train.member.req.MemberSendCodeReq;
 
 /**
  * @author wj
@@ -11,5 +12,8 @@ import com.wj.train.member.req.MemberRegisterReq;
 public interface MemberService {
 
 
-    CommonResp<Long> userRegister(MemberRegisterReq memberRegisterReq);
+    CommonResp<Boolean> sendCode(MemberSendCodeReq memberSendCodeReq);
+
+    CommonResp<Object> login(MemberLoginReq memberLoginReq);
+
 }

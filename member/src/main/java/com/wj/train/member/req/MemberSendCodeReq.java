@@ -9,8 +9,11 @@ import lombok.Data;
  * @description 用户注册封装类
  */
 @Data
-public class MemberRegisterReq {
+public class MemberSendCodeReq {
 
+    /**
+     * 手机号
+     */
     @NotBlank(message = "手机号不能为空")
     private String mobile;
 }
