@@ -2,3 +2,10 @@ GET {{MEMBER}}/member/hello
 Accept: application/json
 
 ###
+
+POST {{MEMBER}}/member/register
+Content-Type: application/x-www-form-urlencoded
+
+mobile=18779391771
+
+###

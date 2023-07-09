@@ -10,7 +10,10 @@ spring:
     url: jdbc:mysql://localhost:3307/train_member?characterEncoding=UTF8&autoReconnect=true&serverTimezone=Asia/Shanghai
     username: root
     password: "010622wj"
-    driver-class-name: com.mysql.jdbc.Driver
+    driver-class-name: com.mysql.cj.jdbc.Driver
 logging:
   level:
     com.wj.train.member.mapper: trace
+
+mybatis:
+  mapper-locations: classpath:/mapper/**/*.xml
