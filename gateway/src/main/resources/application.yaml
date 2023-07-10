@@ -5,6 +5,13 @@ spring:
     name: gateway
   cloud:
     gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowedOriginPatterns: "*"
+            allowCredentials: true
       routes:
         - id: member
           uri: http://localhost:8001
