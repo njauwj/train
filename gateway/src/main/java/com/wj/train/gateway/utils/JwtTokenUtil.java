@@ -1,4 +1,4 @@
-package com.wj.train.common.utils;
+package com.wj.train.gateway.utils;
 
 import cn.hutool.core.date.DateField;
 import cn.hutool.core.date.DateTime;
