@@ -10,7 +10,7 @@ public interface CodeConstant {
     /**
      * 验证码redis存储key
      */
-    String CODE_KEY = "train:member:code:";
+    String CODE_KEY = "train:member:login:code:";
 
     /**
      * 验证码过期时间

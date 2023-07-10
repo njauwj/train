@@ -3,6 +3,7 @@ package com.wj.train.member.controller;
 import com.wj.train.common.resp.CommonResp;
 import com.wj.train.member.req.MemberLoginReq;
 import com.wj.train.member.req.MemberSendCodeReq;
+import com.wj.train.member.resp.MemberLoginResp;
 import com.wj.train.member.service.MemberService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
@@ -30,7 +31,7 @@ public class MemberController {
     }
 
     @PostMapping("/login")
-    public CommonResp<Object> login(@Valid @RequestBody MemberLoginReq memberLoginReq) {
+    public CommonResp<MemberLoginResp> login(@Valid @RequestBody MemberLoginReq memberLoginReq) {
         return memberService.login(memberLoginReq);
     }
 }

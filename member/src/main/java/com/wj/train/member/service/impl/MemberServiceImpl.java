@@ -10,9 +10,11 @@ import com.wj.train.member.domain.MemberExample;
 import com.wj.train.member.mapper.MemberMapper;
 import com.wj.train.member.req.MemberLoginReq;
 import com.wj.train.member.req.MemberSendCodeReq;
+import com.wj.train.member.resp.MemberLoginResp;
 import com.wj.train.member.service.MemberService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import static com.wj.train.common.constant.SnowflakeConstant.DATACENTER_ID;
 import static com.wj.train.common.constant.SnowflakeConstant.WORKER_ID;
 import static com.wj.train.common.exception.BusinessExceptionEnum.MEMBER_MOBILE_CODE_ERROR;
+import static com.wj.train.common.exception.BusinessExceptionEnum.MEMBER_MOBILE_NOT_EXIST;
 import static com.wj.train.member.constant.CodeConstant.CODE_KEY;
 import static com.wj.train.member.constant.CodeConstant.CODE_KEY_TTL;
 
@@ -59,11 +62,11 @@ public class MemberServiceImpl implements MemberService {
      *
      * @param mobile
      */
-    private boolean isMobileExist(String mobile) {
+    private Member getMemberByMobile(String mobile) {
         MemberExample memberExample = new MemberExample();
         memberExample.createCriteria().andMobileEqualTo(mobile);
         List<Member> members = memberMapper.selectByExample(memberExample);
-        return members.isEmpty();
+        return members.get(0);
     }
 
     /**
@@ -76,16 +79,18 @@ public class MemberServiceImpl implements MemberService {
     public CommonResp<Boolean> sendCode(MemberSendCodeReq memberSendCodeReq) {
         String mobile = memberSendCodeReq.getMobile();
         //1. 查询该手机号是否注册
-        boolean mobileExist = isMobileExist(mobile);
-        if (mobileExist) {
+        Member member = getMemberByMobile(mobile);
+        if (member == null) {
             //不存在则自动注册
+            log.info("手机号{}不存在自动注册", mobile);
             userRegister(mobile);
         }
         //2. 生成验证码
         String code = RandomUtil.randomNumbers(4);
         //3. TODO 发送验证码 可以对接第三方服务
         ValueOperations<String, String> ops = stringRedisTemplate.opsForValue();
-        ops.set(CODE_KEY + mobile, code, CODE_KEY_TTL, TimeUnit.SECONDS);
+        //TODO 先写死 8888 方便测试
+        ops.set(CODE_KEY + mobile, "8888", CODE_KEY_TTL, TimeUnit.SECONDS);
         log.info("验证码{}", code);
         return RespUtil.success(true);
     }
@@ -97,8 +102,12 @@ public class MemberServiceImpl implements MemberService {
      * @return
      */
     @Override
-    public CommonResp<Object> login(MemberLoginReq memberLoginReq) {
+    public CommonResp<MemberLoginResp> login(MemberLoginReq memberLoginReq) {
         String mobile = memberLoginReq.getMobile();
+        Member member = getMemberByMobile(mobile);
+        if (member == null) {
+            throw new BusinessException(MEMBER_MOBILE_NOT_EXIST);
+        }
         String code = memberLoginReq.getCode();
         ValueOperations<String, String> ops = stringRedisTemplate.opsForValue();
         String actualCode = ops.get(CODE_KEY + mobile);
@@ -106,6 +115,8 @@ public class MemberServiceImpl implements MemberService {
             //验证码错误
             throw new BusinessException(MEMBER_MOBILE_CODE_ERROR);
         }
-        return RespUtil.success(null);
+        MemberLoginResp memberLoginResp = new MemberLoginResp();
+        BeanUtils.copyProperties(member, memberLoginResp);
+        return RespUtil.success(memberLoginResp);
     }
 }
