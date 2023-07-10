@@ -1,9 +1,11 @@
 package com.wj.train.member.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.wj.train.common.exception.BusinessException;
 import com.wj.train.common.resp.CommonResp;
+import com.wj.train.common.utils.JwtTokenUtil;
 import com.wj.train.common.utils.RespUtil;
 import com.wj.train.member.domain.Member;
 import com.wj.train.member.domain.MemberExample;
@@ -20,6 +22,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.wj.train.common.constant.SnowflakeConstant.DATACENTER_ID;
@@ -117,6 +120,9 @@ public class MemberServiceImpl implements MemberService {
         }
         MemberLoginResp memberLoginResp = new MemberLoginResp();
         BeanUtils.copyProperties(member, memberLoginResp);
+        Map<String, Object> payload = BeanUtil.beanToMap(memberLoginResp);
+        String token = JwtTokenUtil.createToken(payload);
+        memberLoginResp.setToken(token);
         return RespUtil.success(memberLoginResp);
     }
 }

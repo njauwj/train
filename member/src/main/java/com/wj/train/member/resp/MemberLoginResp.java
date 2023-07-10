@@ -22,4 +22,9 @@ public class MemberLoginResp {
      */
     private String mobile;
 
+    /**
+     * JWT token
+     */
+    private String token;
+
 }

@@ -5,7 +5,7 @@ POST {{MEMBER}}/member/member/send-code
 Content-Type: application/json
 
 {
-  "mobile": 18779391772
+  "mobile": 18779391771
 }
 
 ###
@@ -14,5 +14,5 @@ Content-Type: application/json
 
 {
   "mobile": 18779391771,
-  "code": 1313
+  "code": 8888
 }
