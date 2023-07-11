@@ -10,7 +10,7 @@ token: {{token}}
 }
 
 ### 查询乘客
-GET {{GATEWAY}}/member/passenger/query-list?page=2&size=1
+GET {{GATEWAY}}/member/passenger/query-list?page=1&size=2
 Accept: application/json
 token: {{token}}
 

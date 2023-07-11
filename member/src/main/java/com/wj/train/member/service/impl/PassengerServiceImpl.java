@@ -67,8 +67,8 @@ public class PassengerServiceImpl implements PassengerService {
         }
         PageHelper.startPage(page, size);
         List<Passenger> passengers = passengerMapper.selectByExample(passengerExample);
-        List<PassengerQueryResp> passengerQueryResps = BeanUtil.copyToList(passengers, PassengerQueryResp.class);
-        return new PageResp<>(passengerQueryResps.size(), passengerQueryResps);
+        List<PassengerQueryResp> passengerQueryResp = BeanUtil.copyToList(passengers, PassengerQueryResp.class);
+        return new PageResp<>(passengerQueryResp.size(), passengerQueryResp);
     }
 
 
