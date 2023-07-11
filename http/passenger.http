@@ -9,4 +9,12 @@ token: {{token}}
   "type": 3
 }
 
+### 查询乘客
+GET {{GATEWAY}}/member/passenger/query-list?page=2&size=1
+Accept: application/json
+token: {{token}}
+
+
+
+
 ###

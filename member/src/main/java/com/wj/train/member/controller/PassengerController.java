@@ -1,15 +1,16 @@
 package com.wj.train.member.controller;
 
+import com.wj.train.common.context.LocalContext;
 import com.wj.train.common.resp.CommonResp;
+import com.wj.train.common.resp.PageResp;
 import com.wj.train.common.utils.RespUtil;
 import com.wj.train.member.req.PassengerAddReq;
+import com.wj.train.member.req.PassengerQueryReq;
+import com.wj.train.member.resp.PassengerQueryResp;
 import com.wj.train.member.service.PassengerService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * @author wj
@@ -28,6 +29,14 @@ public class PassengerController {
     public CommonResp<Object> sendCode(@Valid @RequestBody PassengerAddReq passengerAddReq) {
         passengerService.addPassenger(passengerAddReq);
         return RespUtil.success(true);
+    }
+
+    @GetMapping("/query-list")
+    public CommonResp<PageResp<PassengerQueryResp>> queryAllPassengers(@Valid PassengerQueryReq passengerQueryReq) {
+        Long memberId = LocalContext.getMemberId();
+        passengerQueryReq.setMemberId(memberId);
+        PageResp<PassengerQueryResp> passengers = passengerService.queryPassengers(passengerQueryReq);
+        return RespUtil.success(passengers);
     }
 
 }
