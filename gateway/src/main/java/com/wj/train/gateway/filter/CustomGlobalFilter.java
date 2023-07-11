@@ -65,6 +65,7 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
         return chain.filter(exchange);
     }
 
+
     /**
      * 多个过滤器的执行顺序，越小越先执行
      *

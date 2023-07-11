@@ -118,6 +118,7 @@ public class MemberServiceImpl implements MemberService {
         }
         MemberLoginResp memberLoginResp = new MemberLoginResp();
         BeanUtils.copyProperties(member, memberLoginResp);
+        //将用户信息封装成map用于生成JWT token
         Map<String, Object> payload = BeanUtil.beanToMap(memberLoginResp);
         String token = JwtTokenUtil.createToken(payload);
         memberLoginResp.setToken(token);

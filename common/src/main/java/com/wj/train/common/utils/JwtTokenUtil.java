@@ -61,6 +61,9 @@ public class JwtTokenUtil {
     }
 
     public static JSONObject getJSONObject(String token) {
+        if (!validate(token)) {
+            return new JSONObject();
+        }
         JWT jwt = JWTUtil.parseToken(token).setKey(KEY.getBytes());
         JSONObject payloads = jwt.getPayloads();
         payloads.remove(RegisteredPayload.ISSUED_AT);
