@@ -1,12 +1,12 @@
 package com.wj.train.member.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.wj.train.common.exception.BusinessException;
 import com.wj.train.common.resp.CommonResp;
 import com.wj.train.common.utils.JwtTokenUtil;
 import com.wj.train.common.utils.RespUtil;
+import com.wj.train.common.utils.SnowFlowUtil;
 import com.wj.train.member.domain.Member;
 import com.wj.train.member.domain.MemberExample;
 import com.wj.train.member.mapper.MemberMapper;
@@ -25,8 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.wj.train.common.constant.SnowflakeConstant.DATACENTER_ID;
-import static com.wj.train.common.constant.SnowflakeConstant.WORKER_ID;
 import static com.wj.train.common.exception.BusinessExceptionEnum.MEMBER_MOBILE_CODE_ERROR;
 import static com.wj.train.common.exception.BusinessExceptionEnum.MEMBER_MOBILE_NOT_EXIST;
 import static com.wj.train.member.constant.CodeConstant.CODE_KEY;
@@ -56,7 +54,7 @@ public class MemberServiceImpl implements MemberService {
     public void userRegister(String mobile) {
         Member member = new Member();
         member.setMobile(mobile);
-        member.setId(IdUtil.getSnowflake(WORKER_ID, DATACENTER_ID).nextId());
+        member.setId(SnowFlowUtil.getSnowFlowId());
         memberMapper.insert(member);
     }
 

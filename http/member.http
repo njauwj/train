@@ -1,18 +1,23 @@
 
 
-###
-POST {{MEMBER}}/member/member/send-code
+### 获取短信验证码
+POST {{GATEWAY}}/member/member/send-code
 Content-Type: application/json
 
 {
   "mobile": 18779391771
 }
 
-###
-POST {{MEMBER}}/member/member/login
+### 登入并将token保存到全局变量中方中
+POST {{GATEWAY}}/member/member/login
 Content-Type: application/json
 
 {
   "mobile": 18779391771,
   "code": 8888
 }
+
+> {%
+    client.global.set("token", response.body.content.token);
+%}
+
