@@ -79,5 +79,15 @@ public class PassengerServiceImpl implements PassengerService {
         return new PageResp<>(passengerQueryResp.size(), passengerQueryResp);
     }
 
+    /**
+     * 删除乘客
+     *
+     * @param id
+     */
+    @Override
+    public void deletePassenger(Long id) {
+        passengerMapper.deleteByPrimaryKey(id);
+    }
+
 
 }

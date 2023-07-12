@@ -16,4 +16,5 @@ public interface PassengerService {
 
     PageResp<PassengerQueryResp> queryPassengers(PassengerQueryReq passengerQueryReq);
 
+    void deletePassenger(Long id);
 }

@@ -26,7 +26,7 @@ public class PassengerController {
 
 
     @PostMapping("/save")
-    public CommonResp<Object> sendCode(@Valid @RequestBody PassengerAddReq passengerAddReq) {
+    public CommonResp<Object> addPassenger(@Valid @RequestBody PassengerAddReq passengerAddReq) {
         passengerService.addPassenger(passengerAddReq);
         return RespUtil.success(true);
     }
@@ -37,6 +37,12 @@ public class PassengerController {
         passengerQueryReq.setMemberId(memberId);
         PageResp<PassengerQueryResp> passengers = passengerService.queryPassengers(passengerQueryReq);
         return RespUtil.success(passengers);
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public CommonResp<Object> removePassenger(@PathVariable Long id) {
+        passengerService.deletePassenger(id);
+        return RespUtil.success(true);
     }
 
 }
