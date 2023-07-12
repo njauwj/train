@@ -1,6 +1,6 @@
 package com.wj.train.${module}.controller.admin;
 
-import com.wj.train.common.context.LoginMemberContext;
+import com.wj.train.common.context.LocalContext;
 import com.wj.train.common.resp.CommonResp;
 import com.wj.train.common.resp.PageResp;
 import com.wj.train.${module}.req.${Domain}QueryReq;

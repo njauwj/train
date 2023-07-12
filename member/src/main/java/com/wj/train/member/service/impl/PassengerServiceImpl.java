@@ -3,6 +3,7 @@ package com.wj.train.member.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateTime;
 import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.wj.train.common.context.LocalContext;
 import com.wj.train.common.resp.PageResp;
 import com.wj.train.common.utils.SnowFlowUtil;
@@ -75,8 +76,9 @@ public class PassengerServiceImpl implements PassengerService {
         }
         PageHelper.startPage(page, size);
         List<Passenger> passengers = passengerMapper.selectByExample(passengerExample);
+        PageInfo<Passenger> pageInfo = new PageInfo<>(passengers);
         List<PassengerQueryResp> passengerQueryResp = BeanUtil.copyToList(passengers, PassengerQueryResp.class);
-        return new PageResp<>(passengerQueryResp.size(), passengerQueryResp);
+        return new PageResp<>(pageInfo.getTotal(), passengerQueryResp);
     }
 
     /**

@@ -29,7 +29,8 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
      */
     private static final List<String> WHITE_REQUEST = Arrays.asList(
             "/member/member/send-code",
-            "/member/member/login"
+            "/member/member/login",
+            "/admin"
     );
 
 
@@ -43,9 +44,11 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
         ServerHttpRequest request = exchange.getRequest();
         ServerHttpResponse response = exchange.getResponse();
         String path = request.getURI().getPath();
-        if (WHITE_REQUEST.contains(path)) {
-            log.info("不需要拦截的请求{}", path);
-            return chain.filter(exchange);
+        for (String url : WHITE_REQUEST) {
+            if (path.contains(url)) {
+                log.info("不需要拦截的请求{}", path);
+                return chain.filter(exchange);
+            }
         }
         HttpHeaders headers = request.getHeaders();
         List<String> tokens = headers.get("token");

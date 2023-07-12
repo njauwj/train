@@ -6,8 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 @MapperScan("com.wj.train.business.mapper")
-public class MemberApplication {
+public class BusinessApplication {
     public static void main(String[] args) {
-        SpringApplication.run(MemberApplication.class, args);
+        SpringApplication.run(BusinessApplication.class, args);
     }
 }
