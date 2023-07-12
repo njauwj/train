@@ -6,7 +6,7 @@ import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.wj.train.common.resp.PageResp;
-import com.wj.train.common.util.SnowUtil;
+import com.wj.train.common.utils.SnowFlowUtil;
 import com.wj.train.${module}.domain.${Domain};
 import com.wj.train.${module}.domain.${Domain}Example;
 import com.wj.train.${module}.mapper.${Domain}Mapper;

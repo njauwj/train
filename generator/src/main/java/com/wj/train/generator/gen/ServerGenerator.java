@@ -19,9 +19,9 @@ public class ServerGenerator {
     static String serverPath = "[module]/src/main/java/com/wj/train/[module]/";
     static String pomPath = "generator/pom.xml";
     static String module = "";
-    static {
-        new File(serverPath).mkdirs();
-    }
+//    static {
+//        new File(serverPath).mkdirs();
+//    }
 
     public static void main(String[] args) throws Exception {
         // 获取mybatis-generator
@@ -82,7 +82,7 @@ public class ServerGenerator {
         gen(Domain, param, "req", "queryReq");
         gen(Domain, param, "resp", "queryResp");
 
-        genVue(do_main, param);
+//        genVue(do_main, param);
     }
 
     private static void gen(String Domain, Map<String, Object> param, String packageName, String target) throws IOException, TemplateException {
