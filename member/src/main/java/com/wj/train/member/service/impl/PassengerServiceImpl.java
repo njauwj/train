@@ -14,6 +14,7 @@ import com.wj.train.member.req.PassengerQueryReq;
 import com.wj.train.member.resp.PassengerQueryResp;
 import com.wj.train.member.service.PassengerService;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +26,7 @@ import java.util.List;
  * @description
  */
 @Service
+@Slf4j
 public class PassengerServiceImpl implements PassengerService {
 
 
@@ -33,20 +35,26 @@ public class PassengerServiceImpl implements PassengerService {
 
 
     /**
-     * 添加乘客
+     * 添加乘客,或更新乘客信息
      *
      * @param passengerAddReq
      */
     public void addPassenger(PassengerAddReq passengerAddReq) {
         Long memberId = LocalContext.get().getId();
         DateTime now = DateTime.now();
-        passengerAddReq.setId(SnowFlowUtil.getSnowFlowId());
-        passengerAddReq.setMemberId(memberId);
-        passengerAddReq.setCreateTime(now);
-        passengerAddReq.setUpdateTime(now);
         Passenger passenger = new Passenger();
         BeanUtils.copyProperties(passengerAddReq, passenger);
+        passenger.setUpdateTime(now);
+        if (passenger.getId() != null) {
+            passengerMapper.updateByPrimaryKeySelective(passenger);
+            log.info("更新乘客信息");
+            return;
+        }
+        passenger.setId(SnowFlowUtil.getSnowFlowId());
+        passenger.setMemberId(memberId);
+        passenger.setCreateTime(now);
         passengerMapper.insert(passenger);
+        log.info("添加乘客");
     }
 
     /**
