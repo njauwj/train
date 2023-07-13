@@ -2,6 +2,7 @@ package com.wj.train.business.domain;
 
 import java.util.Date;
 
+
 public class Station {
     private Long id;
 

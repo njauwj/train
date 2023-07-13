@@ -31,7 +31,7 @@ public class LogAspect {
     /**
      * 定义一个切点 TODO 记得替换为自己项目的controller位置
      */
-    @Pointcut("execution(public * com.wj..*Controller.*(..))")
+    @Pointcut("execution(public * com.wj..*Controller..*(..))")
     public void controllerPointcut() {
     }
 

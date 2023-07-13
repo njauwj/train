@@ -2,9 +2,12 @@ package com.wj.train.business.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateTime;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.wj.train.business.enums.SeatColEnum;
 import com.wj.train.common.resp.PageResp;
 import com.wj.train.common.utils.SnowFlowUtil;
 import com.wj.train.business.domain.TrainCarriage;
@@ -28,36 +31,50 @@ public class TrainCarriageService {
     @Resource
     private TrainCarriageMapper trainCarriageMapper;
 
+    /**
+     * 新增车厢或者更新车厢信息
+     *
+     * @param req
+     */
     public void save(TrainCarriageSaveReq req) {
         DateTime now = DateTime.now();
         TrainCarriage trainCarriage = BeanUtil.copyProperties(req, TrainCarriage.class);
+        String seatType = trainCarriage.getSeatType();
+        Integer rowCount = trainCarriage.getRowCount();
+        int col = SeatColEnum.getColsByType(seatType).size();
         if (ObjectUtil.isNull(trainCarriage.getId())) {
+            //新增车厢信息
             trainCarriage.setId(SnowFlowUtil.getSnowFlowId());
             trainCarriage.setCreateTime(now);
             trainCarriage.setUpdateTime(now);
+            trainCarriage.setSeatCount(rowCount * col);
+            trainCarriage.setColCount(col);
             trainCarriageMapper.insert(trainCarriage);
         } else {
+            //更新车厢信息
             trainCarriage.setUpdateTime(now);
+            trainCarriage.setSeatCount(rowCount * col);
+            trainCarriage.setColCount(col);
             trainCarriageMapper.updateByPrimaryKey(trainCarriage);
         }
     }
 
     public PageResp<TrainCarriageQueryResp> queryList(TrainCarriageQueryReq req) {
         TrainCarriageExample trainCarriageExample = new TrainCarriageExample();
-        trainCarriageExample.setOrderByClause("id desc");
         TrainCarriageExample.Criteria criteria = trainCarriageExample.createCriteria();
-
+        String trainCode = req.getTrainCode();
+        if (CharSequenceUtil.isNotBlank(trainCode)) {
+            criteria.andTrainCodeEqualTo(trainCode);
+        }
+        trainCarriageExample.setOrderByClause("train_code asc,`index` asc");
         LOG.info("查询页码：{}", req.getPage());
         LOG.info("每页条数：{}", req.getSize());
         PageHelper.startPage(req.getPage(), req.getSize());
         List<TrainCarriage> trainCarriageList = trainCarriageMapper.selectByExample(trainCarriageExample);
-
         PageInfo<TrainCarriage> pageInfo = new PageInfo<>(trainCarriageList);
         LOG.info("总行数：{}", pageInfo.getTotal());
         LOG.info("总页数：{}", pageInfo.getPages());
-
         List<TrainCarriageQueryResp> list = BeanUtil.copyToList(trainCarriageList, TrainCarriageQueryResp.class);
-
         PageResp<TrainCarriageQueryResp> pageResp = new PageResp<>();
         pageResp.setTotal(pageInfo.getTotal());
         pageResp.setList(list);

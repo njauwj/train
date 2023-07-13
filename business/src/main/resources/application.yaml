@@ -13,7 +13,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 logging:
   level:
-    com.wj.train.member.mapper: trace
+    com.wj.train.business.mapper: trace
 
 mybatis:
   mapper-locations: classpath:/mapper/**/*.xml

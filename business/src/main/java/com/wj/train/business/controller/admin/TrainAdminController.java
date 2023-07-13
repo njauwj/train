@@ -1,15 +1,17 @@
 package com.wj.train.business.controller.admin;
 
-import com.wj.train.common.context.LocalContext;
 import com.wj.train.common.resp.CommonResp;
 import com.wj.train.common.resp.PageResp;
 import com.wj.train.business.req.TrainQueryReq;
 import com.wj.train.business.req.TrainSaveReq;
 import com.wj.train.business.resp.TrainQueryResp;
 import com.wj.train.business.service.TrainService;
+import com.wj.train.common.utils.RespUtil;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/admin/train")
@@ -34,6 +36,18 @@ public class TrainAdminController {
     public CommonResp<Object> delete(@PathVariable Long id) {
         trainService.delete(id);
         return new CommonResp<>();
+    }
+
+    @GetMapping("/query-all")
+    public CommonResp<List<TrainQueryResp>> queryList() {
+        List<TrainQueryResp> list = trainService.queryAll();
+        return new CommonResp<>(list);
+    }
+
+    @GetMapping("/gen-seat/{trainCode}")
+    public CommonResp<Object> genSeats(@PathVariable String trainCode) {
+        trainService.genSeats(trainCode);
+        return RespUtil.success(true);
     }
 
 }

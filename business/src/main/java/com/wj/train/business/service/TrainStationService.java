@@ -2,6 +2,7 @@ package com.wj.train.business.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateTime;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -42,11 +43,21 @@ public class TrainStationService {
         }
     }
 
+    /**
+     * 分页查询车次的车站信息
+     *
+     * @param req
+     * @return
+     */
     public PageResp<TrainStationQueryResp> queryList(TrainStationQueryReq req) {
         TrainStationExample trainStationExample = new TrainStationExample();
-        trainStationExample.setOrderByClause("id desc");
+        trainStationExample.setOrderByClause("train_code asc,`index` asc");
         TrainStationExample.Criteria criteria = trainStationExample.createCriteria();
-
+        String trainCode = req.getTrainCode();
+        if (CharSequenceUtil.isNotBlank(trainCode)) {
+            //按照车次查询所有途径车站信息
+            criteria.andTrainCodeEqualTo(trainCode);
+        }
         LOG.info("查询页码：{}", req.getPage());
         LOG.info("每页条数：{}", req.getSize());
         PageHelper.startPage(req.getPage(), req.getSize());

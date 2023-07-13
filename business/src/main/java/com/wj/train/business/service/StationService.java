@@ -42,9 +42,14 @@ public class StationService {
         }
     }
 
+    /**
+     * 分页查询所有站点
+     * @param req
+     * @return
+     */
     public PageResp<StationQueryResp> queryList(StationQueryReq req) {
         StationExample stationExample = new StationExample();
-        stationExample.setOrderByClause("id desc");
+        stationExample.setOrderByClause("name asc");
         StationExample.Criteria criteria = stationExample.createCriteria();
 
         LOG.info("查询页码：{}", req.getPage());
@@ -66,5 +71,17 @@ public class StationService {
 
     public void delete(Long id) {
         stationMapper.deleteByPrimaryKey(id);
+    }
+
+    /**
+     * 查询所有的站点
+     *
+     * @return
+     */
+    public List<StationQueryResp> queryAll() {
+        StationExample stationExample = new StationExample();
+        stationExample.setOrderByClause("id desc");
+        List<Station> stationList = stationMapper.selectByExample(stationExample);
+        return BeanUtil.copyToList(stationList, StationQueryResp.class);
     }
 }

@@ -1,6 +1,5 @@
 package com.wj.train.business.controller.admin;
 
-import com.wj.train.common.context.LocalContext;
 import com.wj.train.common.resp.CommonResp;
 import com.wj.train.common.resp.PageResp;
 import com.wj.train.business.req.StationQueryReq;
@@ -10,6 +9,8 @@ import com.wj.train.business.service.StationService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/admin/station")
@@ -36,4 +37,9 @@ public class StationAdminController {
         return new CommonResp<>();
     }
 
+    @GetMapping("/query-all")
+    public CommonResp<List<StationQueryResp>> queryAll() {
+        List<StationQueryResp> stationQueryResp = stationService.queryAll();
+        return new CommonResp<>(stationQueryResp);
+    }
 }

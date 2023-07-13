@@ -5,10 +5,12 @@ import cn.hutool.core.date.DateTime;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.wj.train.business.domain.*;
+import com.wj.train.business.enums.SeatColEnum;
+import com.wj.train.business.mapper.TrainCarriageMapper;
+import com.wj.train.business.mapper.TrainSeatMapper;
 import com.wj.train.common.resp.PageResp;
 import com.wj.train.common.utils.SnowFlowUtil;
-import com.wj.train.business.domain.Train;
-import com.wj.train.business.domain.TrainExample;
 import com.wj.train.business.mapper.TrainMapper;
 import com.wj.train.business.req.TrainQueryReq;
 import com.wj.train.business.req.TrainSaveReq;
@@ -17,6 +19,7 @@ import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -27,6 +30,12 @@ public class TrainService {
 
     @Resource
     private TrainMapper trainMapper;
+
+    @Resource
+    private TrainCarriageMapper trainCarriageMapper;
+
+    @Resource
+    private TrainSeatMapper trainSeatMapper;
 
     public void save(TrainSaveReq req) {
         DateTime now = DateTime.now();
@@ -44,9 +53,7 @@ public class TrainService {
 
     public PageResp<TrainQueryResp> queryList(TrainQueryReq req) {
         TrainExample trainExample = new TrainExample();
-        trainExample.setOrderByClause("id desc");
-        TrainExample.Criteria criteria = trainExample.createCriteria();
-
+        trainExample.setOrderByClause("id asc");
         LOG.info("查询页码：{}", req.getPage());
         LOG.info("每页条数：{}", req.getSize());
         PageHelper.startPage(req.getPage(), req.getSize());
@@ -67,4 +74,61 @@ public class TrainService {
     public void delete(Long id) {
         trainMapper.deleteByPrimaryKey(id);
     }
+
+
+    /**
+     * 查询所有车次
+     *
+     * @param
+     * @return
+     */
+    public List<TrainQueryResp> queryAll() {
+        TrainExample trainExample = new TrainExample();
+        trainExample.setOrderByClause("code asc");
+        List<Train> trainList = trainMapper.selectByExample(trainExample);
+        return BeanUtil.copyToList(trainList, TrainQueryResp.class);
+    }
+
+
+    /**
+     * 一键生成所有的座位
+     */
+    @Transactional
+    public void genSeats(String trainCode) {
+        //1. 根据车次查询对应的所有车厢
+        List<TrainCarriage> carriageByTrainCode = getCarriageByTrainCode(trainCode);
+        int count = 1;
+        DateTime now = DateTime.now();
+        //2. 遍历每一个车厢生成座位
+        for (TrainCarriage trainCarriage : carriageByTrainCode) {
+            for (int row = 1; row <= trainCarriage.getRowCount(); row++) {
+                for (SeatColEnum seatColEnum : SeatColEnum.getColsByType(trainCarriage.getSeatType())) {
+                    TrainSeat trainSeat = new TrainSeat();
+                    trainSeat.setId(SnowFlowUtil.getSnowFlowId());
+                    trainSeat.setTrainCode(trainCode);
+                    trainSeat.setCarriageIndex(trainCarriage.getIndex());
+                    if (row < 10) {
+                        trainSeat.setRow("0" + row);
+                    } else {
+                        trainSeat.setRow(String.valueOf(row));
+                    }
+                    trainSeat.setCol(seatColEnum.getCode());
+                    trainSeat.setSeatType(trainCarriage.getSeatType());
+                    trainSeat.setCarriageSeatIndex(count++);
+                    trainSeat.setCreateTime(now);
+                    trainSeat.setUpdateTime(now);
+                    trainSeatMapper.insert(trainSeat);
+                }
+            }
+        }
+    }
+
+    private List<TrainCarriage> getCarriageByTrainCode(String trainCode) {
+        TrainCarriageExample trainCarriageExample = new TrainCarriageExample();
+        TrainCarriageExample.Criteria criteria = trainCarriageExample.createCriteria();
+        criteria.andTrainCodeEqualTo(trainCode);
+        return trainCarriageMapper.selectByExample(trainCarriageExample);
+    }
+
+
 }
