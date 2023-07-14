@@ -5,6 +5,7 @@ import cn.hutool.core.date.DateTime;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.wj.train.common.exception.BusinessException;
 import com.wj.train.common.resp.PageResp;
 import com.wj.train.common.utils.SnowFlowUtil;
 import com.wj.train.business.domain.Station;
@@ -20,6 +21,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_STATION_NAME_UNIQUE_ERROR;
+
 @Service
 public class StationService {
 
@@ -29,6 +32,11 @@ public class StationService {
     private StationMapper stationMapper;
 
     public void save(StationSaveReq req) {
+        Station stationDB = getStationByName(req.getName());
+        if (stationDB != null) {
+            //车站站名是唯一的不允许重复添加
+            throw new BusinessException(BUSINESS_STATION_NAME_UNIQUE_ERROR);
+        }
         DateTime now = DateTime.now();
         Station station = BeanUtil.copyProperties(req, Station.class);
         if (ObjectUtil.isNull(station.getId())) {
@@ -42,8 +50,17 @@ public class StationService {
         }
     }
 
+    private Station getStationByName(String name) {
+        StationExample stationExample = new StationExample();
+        StationExample.Criteria criteria = stationExample.createCriteria();
+        criteria.andNameEqualTo(name);
+        List<Station> stations = stationMapper.selectByExample(stationExample);
+        return stations.isEmpty() ? null : stations.get(0);
+    }
+
     /**
      * 分页查询所有站点
+     *
      * @param req
      * @return
      */

@@ -4,26 +4,30 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
-import cn.hutool.core.util.StrUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.wj.train.business.enums.SeatColEnum;
-import com.wj.train.common.resp.PageResp;
-import com.wj.train.common.utils.SnowFlowUtil;
 import com.wj.train.business.domain.TrainCarriage;
 import com.wj.train.business.domain.TrainCarriageExample;
+import com.wj.train.business.enums.SeatColEnum;
 import com.wj.train.business.mapper.TrainCarriageMapper;
 import com.wj.train.business.req.TrainCarriageQueryReq;
 import com.wj.train.business.req.TrainCarriageSaveReq;
 import com.wj.train.business.resp.TrainCarriageQueryResp;
+import com.wj.train.common.exception.BusinessException;
+import com.wj.train.common.resp.PageResp;
+import com.wj.train.common.utils.SnowFlowUtil;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_TRAIN_CARRIAGE_INDEX_UNIQUE_ERROR;
+
 @Service
+@Slf4j
 public class TrainCarriageService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TrainCarriageService.class);
@@ -37,6 +41,11 @@ public class TrainCarriageService {
      * @param req
      */
     public void save(TrainCarriageSaveReq req) {
+        TrainCarriage trainCarriageByIndex = getTrainCarriageByIndex(req.getTrainCode(), req.getIndex());
+        if (trainCarriageByIndex != null) {
+            log.error("同车次车厢已存在");
+            throw new BusinessException(BUSINESS_TRAIN_CARRIAGE_INDEX_UNIQUE_ERROR);
+        }
         DateTime now = DateTime.now();
         TrainCarriage trainCarriage = BeanUtil.copyProperties(req, TrainCarriage.class);
         String seatType = trainCarriage.getSeatType();
@@ -57,6 +66,22 @@ public class TrainCarriageService {
             trainCarriage.setColCount(col);
             trainCarriageMapper.updateByPrimaryKey(trainCarriage);
         }
+    }
+
+    /**
+     * 根据车次，车厢查询
+     *
+     * @param trainCode
+     * @param index
+     * @return
+     */
+    private TrainCarriage getTrainCarriageByIndex(String trainCode, Integer index) {
+        TrainCarriageExample trainCarriageExample = new TrainCarriageExample();
+        TrainCarriageExample.Criteria criteria = trainCarriageExample.createCriteria();
+        criteria.andTrainCodeEqualTo(trainCode);
+        criteria.andIndexEqualTo(index);
+        List<TrainCarriage> trainCarriages = trainCarriageMapper.selectByExample(trainCarriageExample);
+        return trainCarriages.isEmpty() ? null : trainCarriages.get(0);
     }
 
     public PageResp<TrainCarriageQueryResp> queryList(TrainCarriageQueryReq req) {

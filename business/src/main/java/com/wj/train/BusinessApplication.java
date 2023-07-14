@@ -1,4 +1,4 @@
-package com.wj.train.business;
+package com.wj.train;
 
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;

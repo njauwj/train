@@ -4,7 +4,7 @@ server:
     context-path: /business
 spring:
   application:
-    name: business
+    name: member
   # 数据库连接
   datasource:
     url: jdbc:mysql://localhost:3307/train_business?characterEncoding=UTF8&autoReconnect=true&serverTimezone=Asia/Shanghai
@@ -13,7 +13,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 logging:
   level:
-    com.wj.train.business.mapper: trace
+    com.wj.train.member.mapper: trace
 
 mybatis:
   mapper-locations: classpath:/mapper/**/*.xml

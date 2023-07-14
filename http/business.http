@@ -1,0 +1,4 @@
+GET {{GATEWAY}}/business/admin/hello
+Accept: application/json
+
+###

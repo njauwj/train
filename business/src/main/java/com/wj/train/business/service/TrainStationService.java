@@ -6,6 +6,7 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.wj.train.common.exception.BusinessException;
 import com.wj.train.common.resp.PageResp;
 import com.wj.train.common.utils.SnowFlowUtil;
 import com.wj.train.business.domain.TrainStation;
@@ -15,13 +16,18 @@ import com.wj.train.business.req.TrainStationQueryReq;
 import com.wj.train.business.req.TrainStationSaveReq;
 import com.wj.train.business.resp.TrainStationQueryResp;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_TRAIN_STATION_INDEX_UNIQUE_ERROR;
+import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_TRAIN_STATION_NAME_UNIQUE_ERROR;
+
 @Service
+@Slf4j
 public class TrainStationService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TrainStationService.class);
@@ -30,6 +36,16 @@ public class TrainStationService {
     private TrainStationMapper trainStationMapper;
 
     public void save(TrainStationSaveReq req) {
+        TrainStation trainStationByIndex = getTrainStationByIndex(req.getTrainCode(), req.getIndex());
+        if (trainStationByIndex != null) {
+            log.error("同车次站序已存在");
+            throw new BusinessException(BUSINESS_TRAIN_STATION_INDEX_UNIQUE_ERROR);
+        }
+        TrainStation trainStationByName = getTrainStationByName(req.getTrainCode(), req.getName());
+        if (trainStationByName != null) {
+            log.error("同车次站名已存在");
+            throw new BusinessException(BUSINESS_TRAIN_STATION_NAME_UNIQUE_ERROR);
+        }
         DateTime now = DateTime.now();
         TrainStation trainStation = BeanUtil.copyProperties(req, TrainStation.class);
         if (ObjectUtil.isNull(trainStation.getId())) {
@@ -42,6 +58,39 @@ public class TrainStationService {
             trainStationMapper.updateByPrimaryKey(trainStation);
         }
     }
+
+    /**
+     * 根据车次，站序查询
+     *
+     * @param trainCode
+     * @param index
+     * @return
+     */
+    private TrainStation getTrainStationByIndex(String trainCode, Integer index) {
+        TrainStationExample trainStationExample = new TrainStationExample();
+        TrainStationExample.Criteria criteria = trainStationExample.createCriteria();
+        criteria.andTrainCodeEqualTo(trainCode);
+        criteria.andIndexEqualTo(index);
+        List<TrainStation> trainStations = trainStationMapper.selectByExample(trainStationExample);
+        return trainStations.isEmpty() ? null : trainStations.get(0);
+    }
+
+    /**
+     * 根据车次，站名查询
+     *
+     * @param trainCode
+     * @param name
+     * @return
+     */
+    private TrainStation getTrainStationByName(String trainCode, String name) {
+        TrainStationExample trainStationExample = new TrainStationExample();
+        TrainStationExample.Criteria criteria = trainStationExample.createCriteria();
+        criteria.andTrainCodeEqualTo(trainCode);
+        criteria.andNameEqualTo(name);
+        List<TrainStation> trainStations = trainStationMapper.selectByExample(trainStationExample);
+        return trainStations.isEmpty() ? null : trainStations.get(0);
+    }
+
 
     /**
      * 分页查询车次的车站信息
