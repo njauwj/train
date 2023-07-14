@@ -1,19 +1,19 @@
 server:
-  port: 8002
+  port: 8003
   servlet:
-    context-path: /business
+    context-path: /batch
 spring:
   application:
-    name: business
+    name: batch
   # 数据库连接
   datasource:
-    url: jdbc:mysql://localhost:3307/train_business?characterEncoding=UTF8&autoReconnect=true&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3307/train_batch?characterEncoding=UTF8&autoReconnect=true&serverTimezone=Asia/Shanghai
     username: root
     password: "010622wj"
     driver-class-name: com.mysql.cj.jdbc.Driver
 logging:
   level:
-    com.wj.train.business.mapper: trace
+    com.wj.train.batch.mapper: trace
 
 mybatis:
   mapper-locations: classpath:/mapper/**/*.xml
