@@ -36,19 +36,20 @@ public class TrainStationService {
     private TrainStationMapper trainStationMapper;
 
     public void save(TrainStationSaveReq req) {
-        TrainStation trainStationByIndex = getTrainStationByIndex(req.getTrainCode(), req.getIndex());
-        if (trainStationByIndex != null) {
-            log.error("同车次站序已存在");
-            throw new BusinessException(BUSINESS_TRAIN_STATION_INDEX_UNIQUE_ERROR);
-        }
-        TrainStation trainStationByName = getTrainStationByName(req.getTrainCode(), req.getName());
-        if (trainStationByName != null) {
-            log.error("同车次站名已存在");
-            throw new BusinessException(BUSINESS_TRAIN_STATION_NAME_UNIQUE_ERROR);
-        }
+
         DateTime now = DateTime.now();
         TrainStation trainStation = BeanUtil.copyProperties(req, TrainStation.class);
         if (ObjectUtil.isNull(trainStation.getId())) {
+            TrainStation trainStationByIndex = getTrainStationByIndex(req.getTrainCode(), req.getIndex());
+            if (trainStationByIndex != null) {
+                log.error("同车次站序已存在");
+                throw new BusinessException(BUSINESS_TRAIN_STATION_INDEX_UNIQUE_ERROR);
+            }
+            TrainStation trainStationByName = getTrainStationByName(req.getTrainCode(), req.getName());
+            if (trainStationByName != null) {
+                log.error("同车次站名已存在");
+                throw new BusinessException(BUSINESS_TRAIN_STATION_NAME_UNIQUE_ERROR);
+            }
             trainStation.setId(SnowFlowUtil.getSnowFlowId());
             trainStation.setCreateTime(now);
             trainStation.setUpdateTime(now);

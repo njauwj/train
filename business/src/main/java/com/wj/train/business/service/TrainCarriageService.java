@@ -41,17 +41,17 @@ public class TrainCarriageService {
      * @param req
      */
     public void save(TrainCarriageSaveReq req) {
-        TrainCarriage trainCarriageByIndex = getTrainCarriageByIndex(req.getTrainCode(), req.getIndex());
-        if (trainCarriageByIndex != null) {
-            log.error("同车次车厢已存在");
-            throw new BusinessException(BUSINESS_TRAIN_CARRIAGE_INDEX_UNIQUE_ERROR);
-        }
         DateTime now = DateTime.now();
         TrainCarriage trainCarriage = BeanUtil.copyProperties(req, TrainCarriage.class);
         String seatType = trainCarriage.getSeatType();
         Integer rowCount = trainCarriage.getRowCount();
         int col = SeatColEnum.getColsByType(seatType).size();
         if (ObjectUtil.isNull(trainCarriage.getId())) {
+            TrainCarriage trainCarriageByIndex = getTrainCarriageByIndex(req.getTrainCode(), req.getIndex());
+            if (trainCarriageByIndex != null) {
+                log.error("同车次车厢已存在");
+                throw new BusinessException(BUSINESS_TRAIN_CARRIAGE_INDEX_UNIQUE_ERROR);
+            }
             //新增车厢信息
             trainCarriage.setId(SnowFlowUtil.getSnowFlowId());
             trainCarriage.setCreateTime(now);

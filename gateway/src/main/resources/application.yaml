@@ -21,3 +21,7 @@ spring:
           uri: http://localhost:8002
           predicates:
             - Path=/business/**
+        - id: batch
+          uri: http://localhost:8003
+          predicates:
+            - Path=/batch/**

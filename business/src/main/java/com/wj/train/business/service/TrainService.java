@@ -41,14 +41,14 @@ public class TrainService {
     private TrainSeatMapper trainSeatMapper;
 
     public void save(TrainSaveReq req) {
-        Train trainByCode = getTrainByCode(req.getCode());
-        if (trainByCode != null) {
-            //车次已存在
-            throw new BusinessException(BUSINESS_TRAIN_CODE_UNIQUE_ERROR);
-        }
         DateTime now = DateTime.now();
         Train train = BeanUtil.copyProperties(req, Train.class);
         if (ObjectUtil.isNull(train.getId())) {
+            Train trainByCode = getTrainByCode(req.getCode());
+            if (trainByCode != null) {
+                //车次已存在
+                throw new BusinessException(BUSINESS_TRAIN_CODE_UNIQUE_ERROR);
+            }
             train.setId(SnowFlowUtil.getSnowFlowId());
             train.setCreateTime(now);
             train.setUpdateTime(now);

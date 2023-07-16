@@ -3,12 +3,12 @@ package com.wj.train.batch.controller;
 import com.wj.train.batch.req.CronJobReq;
 import com.wj.train.batch.resp.CronJobResp;
 import com.wj.train.common.resp.CommonResp;
-import jakarta.annotation.Resource;
 import org.quartz.*;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.impl.triggers.CronTriggerImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,9 +25,16 @@ public class JobController {
 
     private static Logger LOG = LoggerFactory.getLogger(JobController.class);
 
-    @Resource
+    @Autowired
     private SchedulerFactoryBean schedulerFactoryBean;
 
+    /**
+     * 手动执行一次任务
+     *
+     * @param cronJobReq
+     * @return
+     * @throws SchedulerException
+     */
     @RequestMapping(value = "/run")
     public CommonResp<Object> run(@RequestBody CronJobReq cronJobReq) throws SchedulerException {
         String jobClassName = cronJobReq.getName();
@@ -37,6 +44,12 @@ public class JobController {
         return new CommonResp<>();
     }
 
+    /**
+     * 添加任务
+     *
+     * @param cronJobReq
+     * @return
+     */
     @RequestMapping(value = "/add")
     public CommonResp add(@RequestBody CronJobReq cronJobReq) {
         String jobClassName = cronJobReq.getName();
@@ -77,6 +90,12 @@ public class JobController {
         return commonResp;
     }
 
+    /**
+     * 暂停任务
+     *
+     * @param cronJobReq
+     * @return
+     */
     @RequestMapping(value = "/pause")
     public CommonResp pause(@RequestBody CronJobReq cronJobReq) {
         String jobClassName = cronJobReq.getName();
@@ -95,6 +114,12 @@ public class JobController {
         return commonResp;
     }
 
+    /**
+     * 重启任务
+     *
+     * @param cronJobReq
+     * @return
+     */
     @RequestMapping(value = "/resume")
     public CommonResp resume(@RequestBody CronJobReq cronJobReq) {
         String jobClassName = cronJobReq.getName();
@@ -113,6 +138,12 @@ public class JobController {
         return commonResp;
     }
 
+    /**
+     * 更新任务
+     *
+     * @param cronJobReq
+     * @return
+     */
     @RequestMapping(value = "/reschedule")
     public CommonResp reschedule(@RequestBody CronJobReq cronJobReq) {
         String jobClassName = cronJobReq.getName();
@@ -144,6 +175,12 @@ public class JobController {
         return commonResp;
     }
 
+    /**
+     * 删除任务
+     *
+     * @param cronJobReq
+     * @return
+     */
     @RequestMapping(value = "/delete")
     public CommonResp delete(@RequestBody CronJobReq cronJobReq) {
         String jobClassName = cronJobReq.getName();
@@ -164,6 +201,11 @@ public class JobController {
         return commonResp;
     }
 
+    /**
+     * 查询任务
+     *
+     * @return
+     */
     @RequestMapping(value = "/query")
     public CommonResp query() {
         LOG.info("查看所有定时任务开始");

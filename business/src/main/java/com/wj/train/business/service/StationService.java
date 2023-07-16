@@ -32,14 +32,14 @@ public class StationService {
     private StationMapper stationMapper;
 
     public void save(StationSaveReq req) {
-        Station stationDB = getStationByName(req.getName());
-        if (stationDB != null) {
-            //车站站名是唯一的不允许重复添加
-            throw new BusinessException(BUSINESS_STATION_NAME_UNIQUE_ERROR);
-        }
         DateTime now = DateTime.now();
         Station station = BeanUtil.copyProperties(req, Station.class);
         if (ObjectUtil.isNull(station.getId())) {
+            Station stationDB = getStationByName(req.getName());
+            if (stationDB != null) {
+                //车站站名是唯一的不允许重复添加
+                throw new BusinessException(BUSINESS_STATION_NAME_UNIQUE_ERROR);
+            }
             station.setId(SnowFlowUtil.getSnowFlowId());
             station.setCreateTime(now);
             station.setUpdateTime(now);

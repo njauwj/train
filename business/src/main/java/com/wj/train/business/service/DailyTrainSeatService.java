@@ -2,17 +2,18 @@ package com.wj.train.business.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateTime;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.wj.train.common.resp.PageResp;
-import com.wj.train.common.utils.SnowFlowUtil;
 import com.wj.train.business.domain.DailyTrainSeat;
 import com.wj.train.business.domain.DailyTrainSeatExample;
 import com.wj.train.business.mapper.DailyTrainSeatMapper;
 import com.wj.train.business.req.DailyTrainSeatQueryReq;
 import com.wj.train.business.req.DailyTrainSeatSaveReq;
 import com.wj.train.business.resp.DailyTrainSeatQueryResp;
+import com.wj.train.common.resp.PageResp;
+import com.wj.train.common.utils.SnowFlowUtil;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,9 +45,12 @@ public class DailyTrainSeatService {
 
     public PageResp<DailyTrainSeatQueryResp> queryList(DailyTrainSeatQueryReq req) {
         DailyTrainSeatExample dailyTrainSeatExample = new DailyTrainSeatExample();
-        dailyTrainSeatExample.setOrderByClause("id desc");
+        dailyTrainSeatExample.setOrderByClause("date desc,train_code asc,carriage_index asc,carriage_seat_index asc");
         DailyTrainSeatExample.Criteria criteria = dailyTrainSeatExample.createCriteria();
-
+        String trainCode = req.getTrainCode();
+        if (CharSequenceUtil.isNotBlank(trainCode)) {
+            criteria.andTrainCodeEqualTo(trainCode);
+        }
         LOG.info("查询页码：{}", req.getPage());
         LOG.info("每页条数：{}", req.getSize());
         PageHelper.startPage(req.getPage(), req.getSize());
