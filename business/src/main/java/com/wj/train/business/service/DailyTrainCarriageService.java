@@ -8,6 +8,8 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.wj.train.business.domain.DailyTrainCarriage;
 import com.wj.train.business.domain.DailyTrainCarriageExample;
+import com.wj.train.business.domain.Train;
+import com.wj.train.business.domain.TrainCarriage;
 import com.wj.train.business.mapper.DailyTrainCarriageMapper;
 import com.wj.train.business.req.DailyTrainCarriageQueryReq;
 import com.wj.train.business.req.DailyTrainCarriageSaveReq;
@@ -34,6 +36,9 @@ public class DailyTrainCarriageService {
 
     @Resource
     private DailyTrainCarriageMapper dailyTrainCarriageMapper;
+
+    @Resource
+    private TrainCarriageService trainCarriageService;
 
     public void save(DailyTrainCarriageSaveReq req) {
         DateTime now = DateTime.now();
@@ -105,4 +110,26 @@ public class DailyTrainCarriageService {
     public void delete(Long id) {
         dailyTrainCarriageMapper.deleteByPrimaryKey(id);
     }
+
+
+    public void genDailyCarriages(Train train, Date date) {
+        DailyTrainCarriageExample dailyTrainCarriageExample = new DailyTrainCarriageExample();
+        dailyTrainCarriageExample.createCriteria().andTrainCodeEqualTo(train.getCode());
+        dailyTrainCarriageMapper.deleteByExample(dailyTrainCarriageExample);
+        List<TrainCarriage> carriagesByTrainCode = trainCarriageService.getCarriagesByTrainCode(train.getCode());
+        for (TrainCarriage trainCarriage : carriagesByTrainCode) {
+            genDailyCarriage(trainCarriage, date);
+        }
+    }
+
+    public void genDailyCarriage(TrainCarriage trainCarriage, Date date) {
+        DateTime now = DateTime.now();
+        DailyTrainCarriage dailyTrainCarriage = BeanUtil.copyProperties(trainCarriage, DailyTrainCarriage.class);
+        dailyTrainCarriage.setId(SnowFlowUtil.getSnowFlowId());
+        dailyTrainCarriage.setDate(date);
+        dailyTrainCarriage.setCreateTime(now);
+        dailyTrainCarriage.setUpdateTime(now);
+        dailyTrainCarriageMapper.insert(dailyTrainCarriage);
+    }
+
 }

@@ -6,15 +6,15 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.wj.train.common.exception.BusinessException;
-import com.wj.train.common.resp.PageResp;
-import com.wj.train.common.utils.SnowFlowUtil;
 import com.wj.train.business.domain.TrainStation;
 import com.wj.train.business.domain.TrainStationExample;
 import com.wj.train.business.mapper.TrainStationMapper;
 import com.wj.train.business.req.TrainStationQueryReq;
 import com.wj.train.business.req.TrainStationSaveReq;
 import com.wj.train.business.resp.TrainStationQueryResp;
+import com.wj.train.common.exception.BusinessException;
+import com.wj.train.common.resp.PageResp;
+import com.wj.train.common.utils.SnowFlowUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -127,5 +127,12 @@ public class TrainStationService {
 
     public void delete(Long id) {
         trainStationMapper.deleteByPrimaryKey(id);
+    }
+
+
+    public List<TrainStation> getStationsByTrainCode(String trainCode) {
+        TrainStationExample trainStationExample = new TrainStationExample();
+        trainStationExample.createCriteria().andTrainCodeEqualTo(trainCode);
+        return trainStationMapper.selectByExample(trainStationExample);
     }
 }

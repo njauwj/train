@@ -6,8 +6,7 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.wj.train.business.domain.DailyTrainStation;
-import com.wj.train.business.domain.DailyTrainStationExample;
+import com.wj.train.business.domain.*;
 import com.wj.train.business.mapper.DailyTrainStationMapper;
 import com.wj.train.business.req.DailyTrainStationQueryReq;
 import com.wj.train.business.req.DailyTrainStationSaveReq;
@@ -35,6 +34,9 @@ public class DailyTrainStationService {
 
     @Resource
     private DailyTrainStationMapper dailyTrainStationMapper;
+
+    @Resource
+    private TrainStationService trainStationService;
 
     public void save(DailyTrainStationSaveReq req) {
         DateTime now = DateTime.now();
@@ -128,5 +130,27 @@ public class DailyTrainStationService {
 
     public void delete(Long id) {
         dailyTrainStationMapper.deleteByPrimaryKey(id);
+    }
+
+
+    public void genDailyStations(Train train, Date date) {
+        DailyTrainStationExample dailyTrainStationExample = new DailyTrainStationExample();
+        dailyTrainStationExample.createCriteria().andDateEqualTo(date).andTrainCodeEqualTo(train.getCode());
+        //先删除每日的车次车站数据
+        dailyTrainStationMapper.deleteByExample(dailyTrainStationExample);
+        List<TrainStation> stationsByTrainCode = trainStationService.getStationsByTrainCode(train.getCode());
+        for (TrainStation trainStation : stationsByTrainCode) {
+            genDailyStation(trainStation, date);
+        }
+    }
+
+    private void genDailyStation(TrainStation trainStation, Date date) {
+        DateTime now = DateTime.now();
+        DailyTrainStation dailyTrainStation = BeanUtil.copyProperties(trainStation, DailyTrainStation.class);
+        dailyTrainStation.setId(SnowFlowUtil.getSnowFlowId());
+        dailyTrainStation.setDate(date);
+        dailyTrainStation.setCreateTime(now);
+        dailyTrainStation.setUpdateTime(now);
+        dailyTrainStationMapper.insert(dailyTrainStation);
     }
 }

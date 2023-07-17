@@ -107,10 +107,14 @@ public class TrainService {
      * @return
      */
     public List<TrainQueryResp> queryAll() {
+        List<Train> trainList = getAllTrains();
+        return BeanUtil.copyToList(trainList, TrainQueryResp.class);
+    }
+
+    public List<Train> getAllTrains() {
         TrainExample trainExample = new TrainExample();
         trainExample.setOrderByClause("code asc");
-        List<Train> trainList = trainMapper.selectByExample(trainExample);
-        return BeanUtil.copyToList(trainList, TrainQueryResp.class);
+        return trainMapper.selectByExample(trainExample);
     }
 
 

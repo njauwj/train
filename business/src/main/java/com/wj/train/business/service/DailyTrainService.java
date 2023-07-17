@@ -8,6 +8,7 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.wj.train.business.domain.DailyTrain;
 import com.wj.train.business.domain.DailyTrainExample;
+import com.wj.train.business.domain.Train;
 import com.wj.train.business.mapper.DailyTrainMapper;
 import com.wj.train.business.req.DailyTrainQueryReq;
 import com.wj.train.business.req.DailyTrainSaveReq;
@@ -34,6 +35,18 @@ public class DailyTrainService {
 
     @Resource
     private DailyTrainMapper dailyTrainMapper;
+
+    @Resource
+    private TrainService trainService;
+
+    @Resource
+    private DailyTrainStationService dailyTrainStationService;
+
+    @Resource
+    private DailyTrainCarriageService dailyTrainCarriageService;
+
+    @Resource
+    private DailyTrainSeatService dailyTrainSeatService;
 
     public void save(DailyTrainSaveReq req) {
         DateTime now = DateTime.now();
@@ -101,5 +114,38 @@ public class DailyTrainService {
 
     public void delete(Long id) {
         dailyTrainMapper.deleteByPrimaryKey(id);
+    }
+
+    /**
+     * 根据基本数据生成每日车次数据
+     *
+     * @param date
+     */
+    public void genDaily(Date date) {
+        List<Train> trains = trainService.getAllTrains();
+        DailyTrainExample dailyTrainExample = new DailyTrainExample();
+        dailyTrainExample.createCriteria().andDateEqualTo(date);
+        //先删除原有的每日车次数据
+        dailyTrainMapper.deleteByExample(dailyTrainExample);
+        for (Train train : trains) {
+            log.info("开始生成{}的车次数据", date);
+            genDailyTrain(train, date);
+            log.info("开始生成{}的车次{}的车站数据", date, train.getCode());
+            dailyTrainStationService.genDailyStations(train, date);
+            log.info("开始生成{}的车次{}的车厢数据", date, train.getCode());
+            dailyTrainCarriageService.genDailyCarriages(train, date);
+            log.info("开始生成{}的车次{}的座位数据", date, train.getCode());
+            dailyTrainSeatService.genDailySeats(train, date);
+        }
+    }
+
+    private void genDailyTrain(Train train, Date date) {
+        DateTime now = DateTime.now();
+        DailyTrain dailyTrain = BeanUtil.copyProperties(train, DailyTrain.class);
+        dailyTrain.setId(SnowFlowUtil.getSnowFlowId());
+        dailyTrain.setDate(date);
+        dailyTrain.setCreateTime(now);
+        dailyTrain.setUpdateTime(now);
+        dailyTrainMapper.insert(dailyTrain);
     }
 }
