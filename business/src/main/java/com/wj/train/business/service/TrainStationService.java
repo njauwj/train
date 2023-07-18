@@ -132,6 +132,7 @@ public class TrainStationService {
 
     public List<TrainStation> getStationsByTrainCode(String trainCode) {
         TrainStationExample trainStationExample = new TrainStationExample();
+        trainStationExample.setOrderByClause("`index` asc");
         trainStationExample.createCriteria().andTrainCodeEqualTo(trainCode);
         return trainStationMapper.selectByExample(trainStationExample);
     }

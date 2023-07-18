@@ -82,7 +82,7 @@ public class DailyTrainSeatService {
 
     public void genDailySeats(Train train, Date date) {
         DailyTrainSeatExample dailyTrainSeatExample = new DailyTrainSeatExample();
-        dailyTrainSeatExample.createCriteria().andTrainCodeEqualTo(train.getCode());
+        dailyTrainSeatExample.createCriteria().andTrainCodeEqualTo(train.getCode()).andDateEqualTo(date);
         dailyTrainSeatMapper.deleteByExample(dailyTrainSeatExample);
         List<TrainStation> stationsByTrainCode = trainStationService.getStationsByTrainCode(train.getCode());
         int size = stationsByTrainCode.size();
@@ -101,6 +101,21 @@ public class DailyTrainSeatService {
         dailyTrainSeat.setCreateTime(now);
         dailyTrainSeat.setUpdateTime(now);
         dailyTrainSeatMapper.insert(dailyTrainSeat);
+    }
+
+    /**
+     * 获取座位票数
+     *
+     * @param trainCode
+     * @param date
+     * @param code      座位类型
+     * @return
+     */
+    public int getTicketNum(String trainCode, Date date, String code) {
+        DailyTrainSeatExample dailyTrainSeatExample = new DailyTrainSeatExample();
+        dailyTrainSeatExample.createCriteria().andDateEqualTo(date).andTrainCodeEqualTo(trainCode).andSeatTypeEqualTo(code);
+        long count = dailyTrainSeatMapper.countByExample(dailyTrainSeatExample);
+        return count == 0 ? -1 : (int) count;
     }
 
 }

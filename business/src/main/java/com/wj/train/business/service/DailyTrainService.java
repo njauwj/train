@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
@@ -47,6 +48,9 @@ public class DailyTrainService {
 
     @Resource
     private DailyTrainSeatService dailyTrainSeatService;
+
+    @Resource
+    private DailyTrainTicketService dailyTrainTicketService;
 
     public void save(DailyTrainSaveReq req) {
         DateTime now = DateTime.now();
@@ -121,6 +125,7 @@ public class DailyTrainService {
      *
      * @param date
      */
+    @Transactional
     public void genDaily(Date date) {
         List<Train> trains = trainService.getAllTrains();
         DailyTrainExample dailyTrainExample = new DailyTrainExample();
@@ -136,6 +141,8 @@ public class DailyTrainService {
             dailyTrainCarriageService.genDailyCarriages(train, date);
             log.info("开始生成{}的车次{}的座位数据", date, train.getCode());
             dailyTrainSeatService.genDailySeats(train, date);
+            log.info("开始生成{}的车次{}的座位票数数据", date, train.getCode());
+            dailyTrainTicketService.genDailyTickets(train.getCode(), date, train.getType());
         }
     }
 

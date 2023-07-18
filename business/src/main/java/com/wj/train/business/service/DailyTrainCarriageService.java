@@ -114,7 +114,7 @@ public class DailyTrainCarriageService {
 
     public void genDailyCarriages(Train train, Date date) {
         DailyTrainCarriageExample dailyTrainCarriageExample = new DailyTrainCarriageExample();
-        dailyTrainCarriageExample.createCriteria().andTrainCodeEqualTo(train.getCode());
+        dailyTrainCarriageExample.createCriteria().andTrainCodeEqualTo(train.getCode()).andDateEqualTo(date);
         dailyTrainCarriageMapper.deleteByExample(dailyTrainCarriageExample);
         List<TrainCarriage> carriagesByTrainCode = trainCarriageService.getCarriagesByTrainCode(train.getCode());
         for (TrainCarriage trainCarriage : carriagesByTrainCode) {

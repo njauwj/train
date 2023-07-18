@@ -1,4 +1,6 @@
-GET {{GATEWAY}}/business/admin/hello
+GET {{BUSINESS}}/business/admin/daily-train/gen-daily/2023-7-18
 Accept: application/json
 
 ###
+GET {{GATEWAY}}/business/admin/hello
+Accept: application/json
