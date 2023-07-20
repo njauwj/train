@@ -8,15 +8,11 @@ import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.json.JSONUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.wj.train.business.domain.ConfirmOrder;
-import com.wj.train.business.domain.ConfirmOrderExample;
-import com.wj.train.business.domain.DailyTrainTicket;
-import com.wj.train.business.domain.Ticket;
+import com.wj.train.business.domain.*;
 import com.wj.train.business.enums.ConfirmOrderStatusEnum;
 import com.wj.train.business.enums.SeatColEnum;
 import com.wj.train.business.enums.SeatTypeEnum;
 import com.wj.train.business.mapper.ConfirmOrderMapper;
-import com.wj.train.business.mapper.DailyTrainSeatMapper;
 import com.wj.train.business.mapper.DailyTrainTicketMapper;
 import com.wj.train.business.req.ConfirmOrderQueryReq;
 import com.wj.train.business.req.ConfirmOrderSaveReq;
@@ -31,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR;
@@ -48,10 +45,10 @@ public class ConfirmOrderService {
     private DailyTrainTicketMapper dailyTrainTicketMapper;
 
     @Resource
-    private DailyTrainSeatService dailyTrainSeatService;
+    private DailyTrainCarriageService dailyTrainCarriageService;
 
     @Resource
-    private DailyTrainSeatMapper dailyTrainSeatMapper;
+    private DailyTrainSeatService dailyTrainSeatService;
 
     public void save(ConfirmOrderSaveReq req) {
         DateTime now = DateTime.now();
@@ -98,6 +95,8 @@ public class ConfirmOrderService {
      */
     public void confirmOrder(ConfirmOrderSaveReq confirmOrderSaveReq) {
         DateTime now = DateTime.now();
+        String trainCode = confirmOrderSaveReq.getTrainCode();
+        Date date = confirmOrderSaveReq.getDate();
         ConfirmOrder confirmOrder = BeanUtil.copyProperties(confirmOrderSaveReq, ConfirmOrder.class);
         List<Ticket> tickets = confirmOrderSaveReq.getTickets();
         String ticketsJson = JSONUtil.toJsonStr(tickets);
@@ -115,7 +114,7 @@ public class ConfirmOrderService {
         //查看用户是否选座
         String seat = tickets.get(0).getSeat();
         if (CharSequenceUtil.isNotBlank(seat)) {
-            //有选座，要求是前后两排，同车厢，同类型的座位
+            //有选座，要求是前后连续两排，同车厢，同类型的座位
             log.info("本次购票有选座");
             String seatTypeCode = tickets.get(0).getSeatTypeCode();
             List<SeatColEnum> colsByType = SeatColEnum.getColsByType(seatTypeCode);
@@ -140,11 +139,32 @@ public class ConfirmOrderService {
                 relativeOffset.add(offset - absoluteOffset.get(0));
             }
             log.info("选中座位的相对偏移值{}", relativeOffset);
+            // seat.substring(0, 1) A1 -> A
+            chooseSeat(trainCode, date, seatTypeCode, seat.substring(0, 1), relativeOffset);
         } else {
-            //没有选座
+            //没有选座,直接遍历所有车厢座位进行选座
             log.info("本次购票没有选座");
+            for (Ticket ticket : tickets) {
+                chooseSeat(trainCode, date, ticket.getSeatTypeCode(), null, null);
+            }
         }
     }
+
+    /**
+     * 进行座位的选择,seat进行选座的第一个座位类型，后面的座位类型可以由relativeOffset进行推算
+     */
+    private void chooseSeat(String trainCode, Date date, String seatType, String seat, ArrayList<Integer> relativeOffset) {
+        //根据座位的类型筛选出车厢
+        List<DailyTrainCarriage> carriagesBySeatType = dailyTrainCarriageService.getCarriagesBySeatType(trainCode, date, seatType);
+        log.info("符合的车厢数量为{}", carriagesBySeatType.size());
+        //遍历每一个车厢找出所有座位
+        for (DailyTrainCarriage dailyTrainCarriage : carriagesBySeatType) {
+            Integer carriageIndex = dailyTrainCarriage.getIndex();
+            List<DailyTrainSeat> trainSeats = dailyTrainSeatService.getSeatsByCarriageIndex(trainCode, date, carriageIndex);
+            log.info("车厢{}座位数量{}", carriageIndex, trainSeats.size());
+        }
+    }
+
 
     /**
      * 预扣减库存
@@ -162,6 +182,7 @@ public class ConfirmOrderService {
                 case YDZ: {
                     Integer ydz = dailyTrainTicket.getYdz();
                     if (ydz <= 0) {
+                        log.error("一等座余票不足");
                         confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
                         throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
                     }
@@ -171,6 +192,7 @@ public class ConfirmOrderService {
                 case EDZ: {
                     Integer edz = dailyTrainTicket.getEdz();
                     if (edz <= 0) {
+                        log.error("二等座余票不足");
                         confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
                         throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
                     }
@@ -180,6 +202,7 @@ public class ConfirmOrderService {
                 case RW: {
                     Integer rw = dailyTrainTicket.getRw();
                     if (rw <= 0) {
+                        log.error("软卧余票不足");
                         confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
                         throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
                     }
@@ -189,6 +212,7 @@ public class ConfirmOrderService {
                 case YW: {
                     Integer yw = dailyTrainTicket.getYw();
                     if (yw <= 0) {
+                        log.error("硬卧余票不足");
                         confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
                         throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
                     }

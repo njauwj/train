@@ -118,15 +118,19 @@ public class DailyTrainSeatService {
         return count == 0 ? -1 : (int) count;
     }
 
+
     /**
-     * 根据座位类型查询某日某车次的所有作为
+     * 根据车厢查询所有座位
      *
+     * @param trainCode
+     * @param date
+     * @param carriageIndex
      * @return
      */
-    public List<DailyTrainSeat> getDailyTrainSeatsByType(String trainCode, Date date, String type) {
+    public List<DailyTrainSeat> getSeatsByCarriageIndex(String trainCode, Date date, Integer carriageIndex) {
         DailyTrainSeatExample dailyTrainSeatExample = new DailyTrainSeatExample();
         dailyTrainSeatExample.setOrderByClause("carriage_seat_index asc");
-        dailyTrainSeatExample.createCriteria().andSeatTypeEqualTo(type).andDateEqualTo(date).andTrainCodeEqualTo(trainCode);
+        dailyTrainSeatExample.createCriteria().andTrainCodeEqualTo(trainCode).andDateEqualTo(date).andCarriageIndexEqualTo(carriageIndex);
         return dailyTrainSeatMapper.selectByExample(dailyTrainSeatExample);
     }
 

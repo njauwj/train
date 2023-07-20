@@ -132,4 +132,19 @@ public class DailyTrainCarriageService {
         dailyTrainCarriageMapper.insert(dailyTrainCarriage);
     }
 
+    /**
+     * 根据座位类型筛选车厢
+     *
+     * @param trainCode
+     * @param date
+     * @param seatType
+     * @return
+     */
+    public List<DailyTrainCarriage> getCarriagesBySeatType(String trainCode, Date date, String seatType) {
+        DailyTrainCarriageExample dailyTrainCarriageExample = new DailyTrainCarriageExample();
+        dailyTrainCarriageExample.setOrderByClause("`index` asc");
+        dailyTrainCarriageExample.createCriteria().andDateEqualTo(date).andTrainCodeEqualTo(trainCode).andSeatTypeEqualTo(seatType);
+        return dailyTrainCarriageMapper.selectByExample(dailyTrainCarriageExample);
+    }
+
 }
