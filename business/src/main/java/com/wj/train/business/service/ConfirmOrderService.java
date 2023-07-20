@@ -140,12 +140,12 @@ public class ConfirmOrderService {
             }
             log.info("选中座位的相对偏移值{}", relativeOffset);
             // seat.substring(0, 1) A1 -> A
-            chooseSeat(trainCode, date, seatTypeCode, seat.substring(0, 1), relativeOffset);
+            chooseSeat(trainCode, date, seatTypeCode, seat.substring(0, 1), relativeOffset, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
         } else {
             //没有选座,直接遍历所有车厢座位进行选座
             log.info("本次购票没有选座");
             for (Ticket ticket : tickets) {
-                chooseSeat(trainCode, date, ticket.getSeatTypeCode(), null, null);
+                chooseSeat(trainCode, date, ticket.getSeatTypeCode(), null, null, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
             }
         }
     }
@@ -153,7 +153,7 @@ public class ConfirmOrderService {
     /**
      * 进行座位的选择,seat进行选座的第一个座位类型，后面的座位类型可以由relativeOffset进行推算
      */
-    private void chooseSeat(String trainCode, Date date, String seatType, String seat, ArrayList<Integer> relativeOffset) {
+    private void chooseSeat(String trainCode, Date date, String seatType, String seat, ArrayList<Integer> relativeOffset, Integer start, Integer end) {
         //根据座位的类型筛选出车厢
         List<DailyTrainCarriage> carriagesBySeatType = dailyTrainCarriageService.getCarriagesBySeatType(trainCode, date, seatType);
         log.info("符合的车厢数量为{}", carriagesBySeatType.size());
@@ -162,6 +162,69 @@ public class ConfirmOrderService {
             Integer carriageIndex = dailyTrainCarriage.getIndex();
             List<DailyTrainSeat> trainSeats = dailyTrainSeatService.getSeatsByCarriageIndex(trainCode, date, carriageIndex);
             log.info("车厢{}座位数量{}", carriageIndex, trainSeats.size());
+            for (DailyTrainSeat trainSeat : trainSeats) {
+                if (CharSequenceUtil.isNotBlank(seat)) {
+                    //有选座的情况下
+                    String col = trainSeat.getCol();
+                    Integer seatIndex = trainSeat.getCarriageSeatIndex();
+                    if (!col.equals(seat)) {
+                        log.info("该座位{}对应的列值{}不对", seatIndex, col);
+                        continue;
+                    }
+                    boolean result = canSell(trainSeat, start, end);
+                    if (!result) {
+                        continue;
+                    }
+                    boolean flag = false;
+                    for (int i = 1; i < relativeOffset.size(); i++) {
+                        //对剩下的座位进行选座
+                        int position = seatIndex + relativeOffset.get(i);
+                        if (position > trainSeats.get(trainSeats.size() - 1).getCarriageSeatIndex()) {
+                            log.info("所选座位{}超过了当前车厢", position);
+                            flag = true;
+                            break;
+                        }
+                        boolean res = canSell(trainSeats.get(position - 1), start, end);
+                        if (!res) {
+                            flag = true;
+                            break;
+                        }
+                    }
+                    if (flag) {
+                        continue;
+                    }
+                    return;
+                } else {
+                    //无选座的情况下遍历每个座位看对应车站区间是否有座
+                    boolean result = canSell(trainSeat, start, end);
+                    if (result) {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 判断每个座位对应站区间是否能选
+     *
+     * @param trainSeat
+     * @param start
+     * @param end
+     * @return
+     */
+    public boolean canSell(DailyTrainSeat trainSeat, Integer start, Integer end) {
+        String sell = trainSeat.getSell();
+        String region = sell.substring(start, end);
+        if (Integer.parseInt(region) >= 1) {
+            log.info("该座位{}在此区间已售卖{}", trainSeat.getCarriageSeatIndex(), sell);
+            return false;
+        } else {
+            region = region.replace('0', '1');
+            sell = sell.substring(0, start) + region + sell.substring(end);
+            trainSeat.setSell(sell);
+            log.info("该座位{}可选，选座后该座位的售卖情况{}", trainSeat.getCarriageSeatIndex(), sell);
+            return true;
         }
     }
 

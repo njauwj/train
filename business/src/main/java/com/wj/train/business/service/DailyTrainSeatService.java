@@ -85,7 +85,7 @@ public class DailyTrainSeatService {
         dailyTrainSeatExample.createCriteria().andTrainCodeEqualTo(train.getCode()).andDateEqualTo(date);
         dailyTrainSeatMapper.deleteByExample(dailyTrainSeatExample);
         List<TrainStation> stationsByTrainCode = trainStationService.getStationsByTrainCode(train.getCode());
-        int size = stationsByTrainCode.size();
+        int size = stationsByTrainCode.size() - 1;
         List<TrainSeat> seatsByTrainCode = trainSeatService.getSeatsByTrainCode(train.getCode());
         for (TrainSeat trainSeat : seatsByTrainCode) {
             genDailySeat(trainSeat, date, size);
