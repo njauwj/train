@@ -92,4 +92,13 @@ public class PassengerServiceImpl implements PassengerService {
     }
 
 
+
+    @Override
+    public List<PassengerQueryResp> queryMyPassengers(Long memberId) {
+        PassengerExample passengerExample = new PassengerExample();
+        passengerExample.createCriteria().andMemberIdEqualTo(memberId);
+        return BeanUtil.copyToList(passengerMapper.selectByExample(passengerExample), PassengerQueryResp.class);
+    }
+
+
 }

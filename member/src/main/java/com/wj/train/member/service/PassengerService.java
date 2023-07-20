@@ -5,6 +5,8 @@ import com.wj.train.member.req.PassengerAddReq;
 import com.wj.train.member.req.PassengerQueryReq;
 import com.wj.train.member.resp.PassengerQueryResp;
 
+import java.util.List;
+
 /**
  * @author wj
  * @create_time 2023/7/11
@@ -17,4 +19,6 @@ public interface PassengerService {
     PageResp<PassengerQueryResp> queryPassengers(PassengerQueryReq passengerQueryReq);
 
     void deletePassenger(Long id);
+
+    List<PassengerQueryResp> queryMyPassengers(Long memberId);
 }

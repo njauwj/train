@@ -12,6 +12,8 @@ import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * @author wj
  * @create_time 2023/7/9
@@ -43,6 +45,13 @@ public class PassengerController {
     public CommonResp<Object> removePassenger(@PathVariable Long id) {
         passengerService.deletePassenger(id);
         return RespUtil.success(true);
+    }
+
+    @GetMapping("/query-mine")
+    public CommonResp<List<PassengerQueryResp>> queryAllPassengers() {
+        Long memberId = LocalContext.getMemberId();
+        List<PassengerQueryResp> passengers = passengerService.queryMyPassengers(memberId);
+        return RespUtil.success(passengers);
     }
 
 }

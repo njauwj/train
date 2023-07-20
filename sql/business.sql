@@ -97,7 +97,7 @@ create table `daily_train_station` (
   `id` bigint not null comment 'id',
   `date` date not null comment '日期',
   `train_code` varchar(20) not null comment '车次编号',
-  `index` int not null comment '站序',
+  `index` int not null comment '站序|第一站是0',
   `name` varchar(20) not null comment '站名',
   `name_pinyin` varchar(50) not null comment '站名拼音',
   `in_time` time comment '进站时间',
@@ -186,3 +186,29 @@ create table `confirm_order` (
   primary key (`id`),
   index `date_train_code_index` (`date`, `train_code`)
 ) engine=innodb default charset=utf8mb4 comment='确认订单';
+
+CREATE TABLE `undo_log` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `branch_id` bigint(20) NOT NULL,
+  `xid` varchar(100) NOT NULL,
+  `context` varchar(128) NOT NULL,
+  `rollback_info` longblob NOT NULL,
+  `log_status` int(11) NOT NULL,
+  `log_created` datetime NOT NULL,
+  `log_modified` datetime NOT NULL,
+  `ext` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ux_undo_log` (`xid`,`branch_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
+
+drop table if exists `sk_token`;
+create table `sk_token` (
+  `id` bigint not null comment 'id',
+  `date` date not null comment '日期',
+  `train_code` varchar(20) not null comment '车次编号',
+  `count` int not null comment '令牌余量',
+  `create_time` datetime(3) comment '新增时间',
+  `update_time` datetime(3) comment '修改时间',
+  primary key (`id`),
+  unique key `date_train_code_unique` (`date`, `train_code`)
+) engine=innodb default charset=utf8mb4 comment='秒杀令牌';

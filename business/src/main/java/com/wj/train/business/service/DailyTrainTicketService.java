@@ -2,6 +2,7 @@ package com.wj.train.business.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateTime;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -59,6 +60,22 @@ public class DailyTrainTicketService {
         DailyTrainTicketExample dailyTrainTicketExample = new DailyTrainTicketExample();
         dailyTrainTicketExample.setOrderByClause("start_index asc,end_index desc");
         DailyTrainTicketExample.Criteria criteria = dailyTrainTicketExample.createCriteria();
+        String trainCode = req.getTrainCode();
+        Date date = req.getDate();
+        String start = req.getStart();
+        String end = req.getEnd();
+        if (CharSequenceUtil.isNotBlank(trainCode)) {
+            criteria.andTrainCodeEqualTo(trainCode);
+        }
+        if (CharSequenceUtil.isNotBlank(start)) {
+            criteria.andStartEqualTo(start);
+        }
+        if (CharSequenceUtil.isNotBlank(end)) {
+            criteria.andEndEqualTo(end);
+        }
+        if (ObjectUtil.isNotNull(date)) {
+            criteria.andDateEqualTo(date);
+        }
         LOG.info("查询页码：{}", req.getPage());
         LOG.info("每页条数：{}", req.getSize());
         PageHelper.startPage(req.getPage(), req.getSize());
@@ -132,5 +149,6 @@ public class DailyTrainTicketService {
         }
         return null;
     }
+
 
 }

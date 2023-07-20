@@ -1,27 +1,23 @@
-package com.wj.train.business.controller.admin;
+package com.wj.train.business.controller;
 
 import com.wj.train.business.req.DailyTrainTicketQueryReq;
-import com.wj.train.business.req.DailyTrainTicketSaveReq;
 import com.wj.train.business.resp.DailyTrainTicketQueryResp;
 import com.wj.train.business.service.DailyTrainTicketService;
 import com.wj.train.common.resp.CommonResp;
 import com.wj.train.common.resp.PageResp;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/admin/daily-train-ticket")
-public class DailyTrainTicketAdminController {
+@RequestMapping("/daily-train-ticket")
+public class DailyTrainTicketController {
 
     @Resource
     private DailyTrainTicketService dailyTrainTicketService;
 
-    @PostMapping("/save")
-    public CommonResp<Object> save(@Valid @RequestBody DailyTrainTicketSaveReq req) {
-        dailyTrainTicketService.save(req);
-        return new CommonResp<>();
-    }
 
     @GetMapping("/query-list")
     public CommonResp<PageResp<DailyTrainTicketQueryResp>> queryList(@Valid DailyTrainTicketQueryReq req) {
@@ -29,10 +25,5 @@ public class DailyTrainTicketAdminController {
         return new CommonResp<>(list);
     }
 
-    @DeleteMapping("/delete/{id}")
-    public CommonResp<Object> delete(@PathVariable Long id) {
-        dailyTrainTicketService.delete(id);
-        return new CommonResp<>();
-    }
 
 }

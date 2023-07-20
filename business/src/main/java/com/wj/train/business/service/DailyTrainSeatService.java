@@ -118,4 +118,16 @@ public class DailyTrainSeatService {
         return count == 0 ? -1 : (int) count;
     }
 
+    /**
+     * 根据座位类型查询某日某车次的所有作为
+     *
+     * @return
+     */
+    public List<DailyTrainSeat> getDailyTrainSeatsByType(String trainCode, Date date, String type) {
+        DailyTrainSeatExample dailyTrainSeatExample = new DailyTrainSeatExample();
+        dailyTrainSeatExample.setOrderByClause("carriage_seat_index asc");
+        dailyTrainSeatExample.createCriteria().andSeatTypeEqualTo(type).andDateEqualTo(date).andTrainCodeEqualTo(trainCode);
+        return dailyTrainSeatMapper.selectByExample(dailyTrainSeatExample);
+    }
+
 }
