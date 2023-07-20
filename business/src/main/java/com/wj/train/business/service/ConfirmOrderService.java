@@ -2,6 +2,7 @@ package com.wj.train.business.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateTime;
+import cn.hutool.core.util.EnumUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.json.JSONUtil;
 import com.github.pagehelper.PageHelper;
@@ -26,7 +27,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -93,7 +93,6 @@ public class ConfirmOrderService {
     /**
      * @param confirmOrderSaveReq
      */
-    @Transactional
     public void confirmOrder(ConfirmOrderSaveReq confirmOrderSaveReq) {
         DateTime now = DateTime.now();
         ConfirmOrder confirmOrder = BeanUtil.copyProperties(confirmOrderSaveReq, ConfirmOrder.class);
@@ -108,51 +107,62 @@ public class ConfirmOrderService {
         confirmOrderMapper.insert(confirmOrder);
         //查询余票
         DailyTrainTicket dailyTrainTicket = dailyTrainTicketMapper.selectByPrimaryKey(confirmOrderSaveReq.getDailyTrainTicketId());
+        //预扣减库存
+        reduceTickets(confirmOrder, tickets, dailyTrainTicket);
     }
 
-
-    private void reduceTicket(ConfirmOrder confirmOrder, DailyTrainTicket dailyTrainTicket, SeatTypeEnum seatTypeEnum) {
-        switch (seatTypeEnum) {
-            case YDZ: {
-                Integer ydz = dailyTrainTicket.getYdz();
-                if (ydz < 0) {
-                    confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
-                    confirmOrderMapper.updateByPrimaryKey(confirmOrder);
-                    throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
+    /**
+     * 预扣减库存
+     *
+     * @param confirmOrder
+     * @param tickets
+     * @param dailyTrainTicket
+     */
+    private static void reduceTickets(ConfirmOrder confirmOrder, List<Ticket> tickets, DailyTrainTicket dailyTrainTicket) {
+        for (Ticket ticket : tickets) {
+            String seatTypeCode = ticket.getSeatTypeCode();
+            SeatTypeEnum seatTypeEnum = EnumUtil.getBy(SeatTypeEnum::getCode, seatTypeCode);
+            //预扣减余票
+            switch (seatTypeEnum) {
+                case YDZ: {
+                    Integer ydz = dailyTrainTicket.getYdz();
+                    if (ydz <= 0) {
+                        confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
+                        throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
+                    }
+                    dailyTrainTicket.setYdz(ydz - 1);
+                    break;
                 }
-                dailyTrainTicket.setYdz(ydz - 1);
-                break;
-            }
-            case EDZ: {
-                Integer edz = dailyTrainTicket.getEdz();
-                if (edz < 0) {
-                    confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
-                    confirmOrderMapper.updateByPrimaryKey(confirmOrder);
-                    throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
+                case EDZ: {
+                    Integer edz = dailyTrainTicket.getEdz();
+                    if (edz <= 0) {
+                        confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
+                        throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
+                    }
+                    dailyTrainTicket.setYdz(edz - 1);
+                    break;
                 }
-                dailyTrainTicket.setYdz(edz - 1);
-                break;
-            }
-            case RW: {
-                Integer rw = dailyTrainTicket.getRw();
-                if (rw < 0) {
-                    confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
-                    confirmOrderMapper.updateByPrimaryKey(confirmOrder);
-                    throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
+                case RW: {
+                    Integer rw = dailyTrainTicket.getRw();
+                    if (rw <= 0) {
+                        confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
+                        throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
+                    }
+                    dailyTrainTicket.setYdz(rw - 1);
+                    break;
                 }
-                dailyTrainTicket.setYdz(rw - 1);
-                break;
-            }
-            case YW: {
-                Integer yw = dailyTrainTicket.getYw();
-                if (yw < 0) {
-                    confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
-                    confirmOrderMapper.updateByPrimaryKey(confirmOrder);
-                    throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
+                case YW: {
+                    Integer yw = dailyTrainTicket.getYw();
+                    if (yw <= 0) {
+                        confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
+                        throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
+                    }
+                    dailyTrainTicket.setYdz(yw - 1);
+                    break;
                 }
-                dailyTrainTicket.setYdz(yw - 1);
-                break;
             }
         }
     }
+
+
 }
