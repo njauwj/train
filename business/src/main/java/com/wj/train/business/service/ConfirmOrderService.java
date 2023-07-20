@@ -2,6 +2,7 @@ package com.wj.train.business.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateTime;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.EnumUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.json.JSONUtil;
@@ -12,6 +13,7 @@ import com.wj.train.business.domain.ConfirmOrderExample;
 import com.wj.train.business.domain.DailyTrainTicket;
 import com.wj.train.business.domain.Ticket;
 import com.wj.train.business.enums.ConfirmOrderStatusEnum;
+import com.wj.train.business.enums.SeatColEnum;
 import com.wj.train.business.enums.SeatTypeEnum;
 import com.wj.train.business.mapper.ConfirmOrderMapper;
 import com.wj.train.business.mapper.DailyTrainSeatMapper;
@@ -28,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR;
@@ -109,6 +112,38 @@ public class ConfirmOrderService {
         DailyTrainTicket dailyTrainTicket = dailyTrainTicketMapper.selectByPrimaryKey(confirmOrderSaveReq.getDailyTrainTicketId());
         //预扣减库存
         reduceTickets(confirmOrder, tickets, dailyTrainTicket);
+        //查看用户是否选座
+        String seat = tickets.get(0).getSeat();
+        if (CharSequenceUtil.isNotBlank(seat)) {
+            //有选座，要求是前后两排，同车厢，同类型的座位
+            log.info("本次购票有选座");
+            String seatTypeCode = tickets.get(0).getSeatTypeCode();
+            List<SeatColEnum> colsByType = SeatColEnum.getColsByType(seatTypeCode);
+            //构造出前后连续的两排
+            ArrayList<String> cowList = new ArrayList<>();
+            for (int i = 1; i <= 2; i++) {
+                for (SeatColEnum seatColEnum : colsByType) {
+                    cowList.add(seatColEnum.getCode() + i);
+                }
+            }
+            log.info("前后两排座位{}", cowList);
+            //计算选中座位的绝对偏移值
+            ArrayList<Integer> absoluteOffset = new ArrayList<>();
+            for (Ticket ticket : tickets) {
+                int index = cowList.indexOf(ticket.getSeat());
+                absoluteOffset.add(index);
+            }
+            log.info("选中座位的绝对偏移值{}", absoluteOffset);
+            //计算与第一个座位的相对偏移值
+            ArrayList<Integer> relativeOffset = new ArrayList<>();
+            for (Integer offset : absoluteOffset) {
+                relativeOffset.add(offset - absoluteOffset.get(0));
+            }
+            log.info("选中座位的相对偏移值{}", relativeOffset);
+        } else {
+            //没有选座
+            log.info("本次购票没有选座");
+        }
     }
 
     /**
