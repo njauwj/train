@@ -13,6 +13,7 @@ import com.wj.train.business.enums.ConfirmOrderStatusEnum;
 import com.wj.train.business.enums.SeatColEnum;
 import com.wj.train.business.enums.SeatTypeEnum;
 import com.wj.train.business.mapper.ConfirmOrderMapper;
+import com.wj.train.business.mapper.DailyTrainSeatMapper;
 import com.wj.train.business.mapper.DailyTrainTicketMapper;
 import com.wj.train.business.req.ConfirmOrderQueryReq;
 import com.wj.train.business.req.ConfirmOrderSaveReq;
@@ -24,7 +25,9 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aop.framework.AopContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -49,6 +52,10 @@ public class ConfirmOrderService {
 
     @Resource
     private DailyTrainSeatService dailyTrainSeatService;
+
+    @Resource
+    private DailyTrainSeatMapper dailyTrainSeatMapper;
+
 
     public void save(ConfirmOrderSaveReq req) {
         DateTime now = DateTime.now();
@@ -113,6 +120,8 @@ public class ConfirmOrderService {
         reduceTickets(confirmOrder, tickets, dailyTrainTicket);
         //查看用户是否选座
         String seat = tickets.get(0).getSeat();
+        //保存最终地选座结果
+        ArrayList<DailyTrainSeat> finalChooseSeats = new ArrayList<>();
         if (CharSequenceUtil.isNotBlank(seat)) {
             //有选座，要求是前后连续两排，同车厢，同类型的座位
             log.info("本次购票有选座");
@@ -140,20 +149,41 @@ public class ConfirmOrderService {
             }
             log.info("选中座位的相对偏移值{}", relativeOffset);
             // seat.substring(0, 1) A1 -> A
-            chooseSeat(trainCode, date, seatTypeCode, seat.substring(0, 1), relativeOffset, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
+            chooseSeat(finalChooseSeats, trainCode, date, seatTypeCode, seat.substring(0, 1), relativeOffset, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
         } else {
             //没有选座,直接遍历所有车厢座位进行选座
             log.info("本次购票没有选座");
             for (Ticket ticket : tickets) {
-                chooseSeat(trainCode, date, ticket.getSeatTypeCode(), null, null, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
+                chooseSeat(finalChooseSeats, trainCode, date, ticket.getSeatTypeCode(), null, null, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
             }
+        }
+        log.info("保存最终的选座结果至数据库");
+        //代理对象调用事务方法才会生效
+        ConfirmOrderService currentProxy = (ConfirmOrderService) AopContext.currentProxy();
+        currentProxy.updateFinalChooseSeatsToDb(finalChooseSeats);
+    }
+
+
+    /**
+     * 保存最终地选座结果至数据库
+     * 注意：事务方法必须是public不然会失效
+     */
+    @Transactional
+    public void updateFinalChooseSeatsToDb(List<DailyTrainSeat> finalChooseSeats) {
+        log.info("---------最终的选座情况为----------");
+        for (DailyTrainSeat finalChooseSeat : finalChooseSeats) {
+            log.info("座位{}被选中", finalChooseSeat.getCarriageSeatIndex());
+            DailyTrainSeat dailyTrainSeat = new DailyTrainSeat();
+            dailyTrainSeat.setId(finalChooseSeat.getId());
+            dailyTrainSeat.setSell(finalChooseSeat.getSell());
+            dailyTrainSeatMapper.updateByPrimaryKeySelective(dailyTrainSeat);
         }
     }
 
     /**
      * 进行座位的选择,seat进行选座的第一个座位类型，后面的座位类型可以由relativeOffset进行推算
      */
-    private void chooseSeat(String trainCode, Date date, String seatType, String seat, ArrayList<Integer> relativeOffset, Integer start, Integer end) {
+    private void chooseSeat(ArrayList<DailyTrainSeat> finalChooseSeats, String trainCode, Date date, String seatType, String seat, ArrayList<Integer> relativeOffset, Integer start, Integer end) {
         //根据座位的类型筛选出车厢
         List<DailyTrainCarriage> carriagesBySeatType = dailyTrainCarriageService.getCarriagesBySeatType(trainCode, date, seatType);
         log.info("符合的车厢数量为{}", carriagesBySeatType.size());
@@ -162,6 +192,7 @@ public class ConfirmOrderService {
             Integer carriageIndex = dailyTrainCarriage.getIndex();
             List<DailyTrainSeat> trainSeats = dailyTrainSeatService.getSeatsByCarriageIndex(trainCode, date, carriageIndex);
             log.info("车厢{}座位数量{}", carriageIndex, trainSeats.size());
+            //遍历该车厢的所有座位
             for (DailyTrainSeat trainSeat : trainSeats) {
                 if (CharSequenceUtil.isNotBlank(seat)) {
                     //有选座的情况下
@@ -175,6 +206,7 @@ public class ConfirmOrderService {
                     if (!result) {
                         continue;
                     }
+                    finalChooseSeats.add(trainSeat);
                     boolean flag = false;
                     for (int i = 1; i < relativeOffset.size(); i++) {
                         //对剩下的座位进行选座
@@ -184,20 +216,35 @@ public class ConfirmOrderService {
                             flag = true;
                             break;
                         }
-                        boolean res = canSell(trainSeats.get(position - 1), start, end);
+                        DailyTrainSeat nextTrainSeat = trainSeats.get(position - 1);
+                        boolean res = canSell(nextTrainSeat, start, end);
                         if (!res) {
                             flag = true;
                             break;
                         }
+                        finalChooseSeats.add(nextTrainSeat);
                     }
                     if (flag) {
+                        //清除所有已选择的座位进行下一轮选择
+                        finalChooseSeats.clear();
                         continue;
                     }
                     return;
                 } else {
+                    boolean isChoosed = false;
+                    for (DailyTrainSeat finalChooseSeat : finalChooseSeats) {
+                        if (finalChooseSeat.getId().equals(trainSeat.getId())) {
+                            log.info("该座位{}已经被选过不能重复选择", trainSeat.getCarriageSeatIndex());
+                            isChoosed = true;
+                        }
+                    }
+                    if (isChoosed) {
+                        continue;
+                    }
                     //无选座的情况下遍历每个座位看对应车站区间是否有座
                     boolean result = canSell(trainSeat, start, end);
                     if (result) {
+                        finalChooseSeats.add(trainSeat);
                         return;
                     }
                 }
