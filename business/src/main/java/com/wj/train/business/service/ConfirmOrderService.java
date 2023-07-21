@@ -160,23 +160,103 @@ public class ConfirmOrderService {
         log.info("保存最终的选座结果至数据库");
         //代理对象调用事务方法才会生效
         ConfirmOrderService currentProxy = (ConfirmOrderService) AopContext.currentProxy();
-        currentProxy.updateFinalChooseSeatsToDb(finalChooseSeats);
+        currentProxy.updateFinalChooseSeatsToDb(dailyTrainTicket, finalChooseSeats);
     }
 
 
     /**
-     * 保存最终地选座结果至数据库
+     * 保存最终地选座结果至数据库，并扣减余票的库存
      * 注意：事务方法必须是public不然会失效
      */
     @Transactional
-    public void updateFinalChooseSeatsToDb(List<DailyTrainSeat> finalChooseSeats) {
+    public void updateFinalChooseSeatsToDb(DailyTrainTicket dailyTrainTicket, List<DailyTrainSeat> finalChooseSeats) {
         log.info("---------最终的选座情况为----------");
         for (DailyTrainSeat finalChooseSeat : finalChooseSeats) {
             log.info("座位{}被选中", finalChooseSeat.getCarriageSeatIndex());
+            //sell 更新后的售卖信息
+            String sell = finalChooseSeat.getSell();
+            String seatType = finalChooseSeat.getSeatType();
+            String trainCode = finalChooseSeat.getTrainCode();
+            Date date = finalChooseSeat.getDate();
             DailyTrainSeat dailyTrainSeat = new DailyTrainSeat();
             dailyTrainSeat.setId(finalChooseSeat.getId());
-            dailyTrainSeat.setSell(finalChooseSeat.getSell());
+            dailyTrainSeat.setSell(sell);
+            dailyTrainSeat.setUpdateTime(DateTime.now());
             dailyTrainSeatMapper.updateByPrimaryKeySelective(dailyTrainSeat);
+            //扣减余票
+            /*
+            假设10个站，本次买4~7站,站序从0开始
+            原售：001000001
+            购买：000011100
+            新售：001011101
+             */
+            //起始站
+            int startIndex = dailyTrainTicket.getStartIndex();
+            //终点站
+            int endIndex = dailyTrainTicket.getEndIndex();
+            //新售：001011101
+            char[] sellCharArray = sell.toCharArray();
+            //minBegin 最大受影响区间的起始
+            int minBegin = 0;
+            //maxEnd 最大受影响区间的结束
+            int maxEnd = sell.length() - 1;
+            for (int i = startIndex - 1; i >= 0; i--) {
+                if (sellCharArray[i] == '1') {
+                    minBegin = i + 1;
+                    break;
+                }
+            }
+            for (int j = endIndex; j < sellCharArray.length; j++) {
+                if (sellCharArray[j] == '1') {
+                    maxEnd = j - 1;
+                    break;
+                }
+            }
+            for (int k = minBegin; k < endIndex; k++) {
+                int temp = Math.max(k, startIndex);
+                for (int m = temp; m <= maxEnd; m++) {
+                    DailyTrainTicketExample dailyTrainTicketExample = new DailyTrainTicketExample();
+                    dailyTrainTicketExample.createCriteria().andDateEqualTo(date).andTrainCodeEqualTo(trainCode)
+                            .andStartIndexEqualTo(k).andEndIndexEqualTo(m + 1);
+                    DailyTrainTicket dailyTrainTicketDB = dailyTrainTicketMapper.selectByExample(dailyTrainTicketExample).get(0);
+                    SeatTypeEnum seatTypeEnum = EnumUtil.getBy(SeatTypeEnum::getCode, seatType);
+                    //预扣减余票
+                    switch (seatTypeEnum) {
+                        case YDZ: {
+                            DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
+                            updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
+                            updateDailyTrainTicket.setYdz(dailyTrainTicketDB.getYdz() - 1);
+                            updateDailyTrainTicket.setUpdateTime(DateTime.now());
+                            dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
+                            break;
+                        }
+                        case EDZ: {
+                            DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
+                            updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
+                            updateDailyTrainTicket.setEdz(dailyTrainTicketDB.getEdz() - 1);
+                            updateDailyTrainTicket.setUpdateTime(DateTime.now());
+                            dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
+                            break;
+                        }
+                        case RW: {
+                            DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
+                            updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
+                            updateDailyTrainTicket.setRw(dailyTrainTicketDB.getRw() - 1);
+                            updateDailyTrainTicket.setUpdateTime(DateTime.now());
+                            dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
+                            break;
+                        }
+                        case YW: {
+                            DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
+                            updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
+                            updateDailyTrainTicket.setYw(dailyTrainTicketDB.getYw() - 1);
+                            updateDailyTrainTicket.setUpdateTime(DateTime.now());
+                            dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
