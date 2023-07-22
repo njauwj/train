@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: member
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      discovery:
+        namespace: train
+        server-addr: localhost:8848
+      config:
+        namespace: train
+        server-addr: localhost:8848
+        file-extension: yaml
+
