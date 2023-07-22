@@ -12,11 +12,13 @@ import com.wj.train.business.domain.*;
 import com.wj.train.business.enums.ConfirmOrderStatusEnum;
 import com.wj.train.business.enums.SeatColEnum;
 import com.wj.train.business.enums.SeatTypeEnum;
+import com.wj.train.business.feign.MemberFeign;
 import com.wj.train.business.mapper.ConfirmOrderMapper;
 import com.wj.train.business.mapper.DailyTrainSeatMapper;
 import com.wj.train.business.mapper.DailyTrainTicketMapper;
 import com.wj.train.business.req.ConfirmOrderQueryReq;
 import com.wj.train.business.req.ConfirmOrderSaveReq;
+import com.wj.train.business.req.TicketSaveReq;
 import com.wj.train.business.resp.ConfirmOrderQueryResp;
 import com.wj.train.common.exception.BusinessException;
 import com.wj.train.common.resp.PageResp;
@@ -55,6 +57,9 @@ public class ConfirmOrderService {
 
     @Resource
     private DailyTrainSeatMapper dailyTrainSeatMapper;
+
+    @Resource
+    private MemberFeign memberFeign;
 
 
     public void save(ConfirmOrderSaveReq req) {
@@ -120,7 +125,7 @@ public class ConfirmOrderService {
         reduceTickets(confirmOrder, tickets, dailyTrainTicket);
         //查看用户是否选座
         String seat = tickets.get(0).getSeat();
-        //保存最终地选座结果
+        //存储最终地选座结果
         ArrayList<DailyTrainSeat> finalChooseSeats = new ArrayList<>();
         if (CharSequenceUtil.isNotBlank(seat)) {
             //有选座，要求是前后连续两排，同车厢，同类型的座位
@@ -157,10 +162,35 @@ public class ConfirmOrderService {
                 chooseSeat(finalChooseSeats, trainCode, date, ticket.getSeatTypeCode(), null, null, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
             }
         }
-        log.info("保存最终的选座结果至数据库");
+        log.info("保存最终的选座结果至数据库，并扣减车票数量");
         //代理对象调用事务方法才会生效
         ConfirmOrderService currentProxy = (ConfirmOrderService) AopContext.currentProxy();
         currentProxy.updateFinalChooseSeatsToDb(dailyTrainTicket, finalChooseSeats);
+        //更待订单状态由初始->成功
+        ConfirmOrder finalCOnfirmOrder = new ConfirmOrder();
+        finalCOnfirmOrder.setId(confirmOrder.getId());
+        finalCOnfirmOrder.setStatus(ConfirmOrderStatusEnum.SUCCESS.getCode());
+        finalCOnfirmOrder.setUpdateTime(DateTime.now());
+        confirmOrderMapper.updateByPrimaryKeySelective(finalCOnfirmOrder);
+        //保存会员购票信息
+        for (int i = 0; i < finalChooseSeats.size(); i++) {
+            TicketSaveReq ticketSaveReq = new TicketSaveReq();
+            ticketSaveReq.setMemberId(confirmOrderSaveReq.getMemberId());
+            ticketSaveReq.setPassengerId(tickets.get(i).getPassengerId());
+            ticketSaveReq.setPassengerName(tickets.get(i).getPassengerName());
+            ticketSaveReq.setTrainDate(date);
+            ticketSaveReq.setTrainCode(trainCode);
+            ticketSaveReq.setCarriageIndex(finalChooseSeats.get(i).getCarriageIndex());
+            ticketSaveReq.setSeatRow(finalChooseSeats.get(i).getRow());
+            ticketSaveReq.setSeatCol(finalChooseSeats.get(i).getCol());
+            ticketSaveReq.setStartStation(dailyTrainTicket.getStart());
+            ticketSaveReq.setStartTime(dailyTrainTicket.getStartTime());
+            ticketSaveReq.setEndStation(dailyTrainTicket.getEnd());
+            ticketSaveReq.setEndTime(dailyTrainTicket.getEndTime());
+            ticketSaveReq.setSeatType(finalChooseSeats.get(i).getSeatType());
+            memberFeign.save(ticketSaveReq);
+        }
+
     }
 
 

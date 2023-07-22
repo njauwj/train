@@ -67,7 +67,7 @@ public class MemberServiceImpl implements MemberService {
         MemberExample memberExample = new MemberExample();
         memberExample.createCriteria().andMobileEqualTo(mobile);
         List<Member> members = memberMapper.selectByExample(memberExample);
-        return members.get(0);
+        return members.isEmpty() ? null : members.get(0);
     }
 
     /**

@@ -57,8 +57,8 @@
                 <version>1.4.0</version>
                 <configuration>
 <!--                    todo 自动生成配置文件位置以实际为主-->
-                    <!--<configurationFile>src/main/resources/generator-config-member.xml</configurationFile>-->
-                    <configurationFile>src/main/resources/generator-config-business.xml</configurationFile>
+                    <configurationFile>src/main/resources/generator-config-member.xml</configurationFile>
+<!--                    <configurationFile>src/main/resources/generator-config-business.xml</configurationFile>-->
                     <!--<configurationFile>src/main/resources/generator-config-batch.xml</configurationFile>-->
                     <overwrite>true</overwrite>
                     <verbose>true</verbose>
