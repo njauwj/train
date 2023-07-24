@@ -23,18 +23,19 @@ import com.wj.train.business.resp.ConfirmOrderQueryResp;
 import com.wj.train.common.exception.BusinessException;
 import com.wj.train.common.resp.PageResp;
 import com.wj.train.common.utils.SnowFlowUtil;
+import io.seata.core.context.RootContext;
+import io.seata.spring.annotation.GlobalTransactional;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.aop.framework.AopContext;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_CONFIRM_ORDER_BUSY;
 import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR;
 
 @Service
@@ -60,6 +61,9 @@ public class ConfirmOrderService {
 
     @Resource
     private MemberFeign memberFeign;
+
+    @Resource
+    private ConfirmOrderService confirmOrderService;
 
 
     public void save(ConfirmOrderSaveReq req) {
@@ -162,10 +166,35 @@ public class ConfirmOrderService {
                 chooseSeat(finalChooseSeats, trainCode, date, ticket.getSeatTypeCode(), null, null, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
             }
         }
+        try {
+            confirmOrderService.updateFinalDataToDB(confirmOrderSaveReq, trainCode, date, confirmOrder, tickets, dailyTrainTicket, finalChooseSeats);
+        } catch (Exception e) {
+            confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
+            confirmOrder.setUpdateTime(DateTime.now());
+            confirmOrderMapper.updateByPrimaryKey(confirmOrder);
+            throw new BusinessException(BUSINESS_CONFIRM_ORDER_BUSY);
+        }
+
+    }
+
+    /**
+     * 保存座位的详情数据，车站车票的扣减，购票信息至数据库
+     * 由于涉及不同数据库之间的调用，所以需要使用分布式事务
+     *
+     * @param confirmOrderSaveReq
+     * @param trainCode
+     * @param date
+     * @param confirmOrder
+     * @param tickets
+     * @param dailyTrainTicket
+     * @param finalChooseSeats
+     */
+    @GlobalTransactional
+    public void updateFinalDataToDB(ConfirmOrderSaveReq confirmOrderSaveReq, String trainCode, Date date, ConfirmOrder confirmOrder, List<Ticket> tickets, DailyTrainTicket dailyTrainTicket, ArrayList<DailyTrainSeat> finalChooseSeats) {
+
+        log.info("seata全局事务ID: {}", RootContext.getXID());
         log.info("保存最终的选座结果至数据库，并扣减车票数量");
-        //代理对象调用事务方法才会生效
-        ConfirmOrderService currentProxy = (ConfirmOrderService) AopContext.currentProxy();
-        currentProxy.updateFinalChooseSeatsToDb(dailyTrainTicket, finalChooseSeats);
+        updateFinalChooseSeatsToDb(dailyTrainTicket, finalChooseSeats);
         //更待订单状态由初始->成功
         ConfirmOrder finalCOnfirmOrder = new ConfirmOrder();
         finalCOnfirmOrder.setId(confirmOrder.getId());
@@ -190,7 +219,9 @@ public class ConfirmOrderService {
             ticketSaveReq.setSeatType(finalChooseSeats.get(i).getSeatType());
             memberFeign.save(ticketSaveReq);
         }
-
+        if (1 == 1) {
+            throw new RuntimeException();
+        }
     }
 
 
@@ -198,7 +229,7 @@ public class ConfirmOrderService {
      * 保存最终地选座结果至数据库，并扣减余票的库存
      * 注意：事务方法必须是public不然会失效
      */
-    @Transactional
+//    @Transactional
     public void updateFinalChooseSeatsToDb(DailyTrainTicket dailyTrainTicket, List<DailyTrainSeat> finalChooseSeats) {
         log.info("---------最终的选座情况为----------");
         for (DailyTrainSeat finalChooseSeat : finalChooseSeats) {

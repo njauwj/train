@@ -5,15 +5,31 @@ server:
 spring:
   application:
     name: business
+  data:
+    redis:
+      host: 1.15.145.217
+      password: "010622"
+      database: 1
+      port: 6379
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 10
+          min-idle: 1
+          time-between-eviction-runs: 10
   # 数据库连接
   datasource:
     url: jdbc:mysql://localhost:3307/train_business?characterEncoding=UTF8&autoReconnect=true&serverTimezone=Asia/Shanghai
     username: root
     password: "010622wj"
     driver-class-name: com.mysql.cj.jdbc.Driver
+  main:
+    allow-circular-references: true
 logging:
   level:
     com.wj.train.business.mapper: trace
 
 mybatis:
   mapper-locations: classpath:/mapper/**/*.xml
+
+

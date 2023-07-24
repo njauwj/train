@@ -13,7 +13,10 @@ public enum BusinessExceptionEnum {
     BUSINESS_TRAIN_STATION_NAME_UNIQUE_ERROR("同车次站名已存在"),
     BUSINESS_TRAIN_CARRIAGE_INDEX_UNIQUE_ERROR("同车次厢号已存在"),
 
-    BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR("余票不足");
+    BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR("余票不足"),
+
+    BUSINESS_CONFIRM_ORDER_BUSY("系统繁忙，请稍后重试");
+
 
     private String desc;
 
@@ -35,4 +38,4 @@ public enum BusinessExceptionEnum {
                 "desc='" + desc + '\'' +
                 "} " + super.toString();
     }
-    }
+}

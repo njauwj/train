@@ -13,7 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
  * @create_time 2023/7/22
  * @description
  */
-@FeignClient(name = "member", url = "http://localhost:8001/member")
+//@FeignClient(name = "member", url = "http://localhost:8001/member")
+@FeignClient(name = "member")
 @Component
 public interface MemberFeign {
 
@@ -24,6 +25,6 @@ public interface MemberFeign {
      * @param req
      * @return
      */
-    @PostMapping("/admin/ticket/save")
+    @PostMapping("/member/admin/ticket/save")
     CommonResp<Object> save(@Valid @RequestBody TicketSaveReq req);
 }
