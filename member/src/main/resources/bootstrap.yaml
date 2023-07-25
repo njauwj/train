@@ -12,28 +12,20 @@ spring:
         namespace: train
         server-addr: 127.0.0.1:8848
         file-extension: yaml
-seata:
-  tx-service-group: train-group
-  service:
-    vgroup-mapping:
-      train-group: default
+#seata:
+#  tx-service-group: train-group
+#  service:
+#    vgroup-mapping:
+#      train-group: default #对应seata服务的集群cluster，seata没指定集群则默认是default
+# 不使用nacos可以打开grouplist找到指定服务地址，有了nacos直接去nacos找seata服务
 #    grouplist:
 #      default: 127.0.0.1:8091
-  registry:
-    type: nacos
-    nacos:
-      application: seata-server
-      server-addr: 127.0.0.1:8848
-      group: DEFAULT_GROUP
-      namespace: train
-      username: nacos
-      password: nacos
-#  config:
+#  registry:
 #    type: nacos
 #    nacos:
+#      application: seata-server
 #      server-addr: 127.0.0.1:8848
 #      group: DEFAULT_GROUP
 #      namespace: train
 #      username: nacos
 #      password: nacos
-#      data-id: seataServer.yaml

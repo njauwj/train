@@ -15,9 +15,13 @@ public enum BusinessExceptionEnum {
 
     BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR("余票不足"),
 
-    BUSINESS_CONFIRM_ORDER_BUSY("系统繁忙，请稍后重试");
+    BUSINESS_CONFIRM_ORDER_BUSY("系统繁忙，请稍后重试"),
+
+    BUSINESS_TOO_MANY_PEOPLE("当前车次购票人数太多，请稍后重试")
 
 
+
+    ;
     private String desc;
 
     BusinessExceptionEnum(String desc) {
