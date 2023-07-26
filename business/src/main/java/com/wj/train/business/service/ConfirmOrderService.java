@@ -6,6 +6,8 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.EnumUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.json.JSONUtil;
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.wj.train.business.domain.*;
@@ -110,8 +112,21 @@ public class ConfirmOrderService {
     }
 
     /**
+     * 限流降级方法
+     *
+     * @param confirmOrderSaveReq
+     * @param blockException
+     */
+    public void confirmOrderBlockHandler(ConfirmOrderSaveReq confirmOrderSaveReq, BlockException blockException) {
+        log.info("confirmOrder接口触发限流{}", blockException.toString());
+        throw new BusinessException(BUSINESS_TOO_MANY_PEOPLE);
+    }
+
+
+    /**
      * @param confirmOrderSaveReq
      */
+    @SentinelResource(value = "confirmOrder", blockHandler = "confirmOrderBlockHandler")
     public void confirmOrder(ConfirmOrderSaveReq confirmOrderSaveReq) {
         String key = confirmOrderSaveReq.getDate() + confirmOrderSaveReq.getTrainCode();
         RLock lock = redissonClient.getLock(key);
