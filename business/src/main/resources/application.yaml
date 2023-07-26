@@ -17,6 +17,19 @@ spring:
           max-idle: 10
           min-idle: 1
           time-between-eviction-runs: 10
+  cloud:
+    sentinel:
+      transport:
+        port: 8719
+        dashboard: localhost:18080
+      datasource:
+        flow: # 这个可以随意
+          nacos:
+            server-addr: localhost:8848
+            namespace: train
+            group-id: DEFAULT_GROUP
+            data-id: sentinel
+            rule-type: flow
   # 数据库连接
   datasource:
     url: jdbc:mysql://localhost:3307/train_business?characterEncoding=UTF8&autoReconnect=true&serverTimezone=Asia/Shanghai
@@ -31,5 +44,6 @@ logging:
 
 mybatis:
   mapper-locations: classpath:/mapper/**/*.xml
+
 
 
