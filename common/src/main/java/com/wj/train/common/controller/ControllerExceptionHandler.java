@@ -57,10 +57,5 @@ public class ControllerExceptionHandler {
         return RespUtil.error(e.getBindingResult().getAllErrors().get(0).getDefaultMessage());
     }
 
-    @ExceptionHandler(value = RuntimeException.class)
-    @ResponseBody
-    public CommonResp exceptionHandler(RuntimeException e) {
-        throw e;
-    }
 
 }
