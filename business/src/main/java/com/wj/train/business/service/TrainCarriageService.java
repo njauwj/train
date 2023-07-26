@@ -116,4 +116,13 @@ public class TrainCarriageService {
         trainCarriageExample.createCriteria().andTrainCodeEqualTo(trainCode);
         return trainCarriageMapper.selectByExample(trainCarriageExample);
     }
+
+    public Integer getTotalSeatsNums(String trainCode) {
+        List<TrainCarriage> carriagesByTrainCode = getCarriagesByTrainCode(trainCode);
+        int count = 0;
+        for (TrainCarriage trainCarriage : carriagesByTrainCode) {
+            count += trainCarriage.getSeatCount();
+        }
+        return count;
+    }
 }

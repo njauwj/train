@@ -5,19 +5,20 @@ import cn.hutool.core.date.DateTime;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.wj.train.common.resp.PageResp;
-import com.wj.train.common.utils.SnowFlowUtil;
 import com.wj.train.business.domain.SkToken;
 import com.wj.train.business.domain.SkTokenExample;
 import com.wj.train.business.mapper.SkTokenMapper;
 import com.wj.train.business.req.SkTokenQueryReq;
 import com.wj.train.business.req.SkTokenSaveReq;
 import com.wj.train.business.resp.SkTokenQueryResp;
+import com.wj.train.common.resp.PageResp;
+import com.wj.train.common.utils.SnowFlowUtil;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -27,6 +28,12 @@ public class SkTokenService {
 
     @Resource
     private SkTokenMapper skTokenMapper;
+
+    @Resource
+    private TrainStationService trainStationService;
+
+    @Resource
+    private TrainCarriageService trainCarriageService;
 
     public void save(SkTokenSaveReq req) {
         DateTime now = DateTime.now();
@@ -66,5 +73,32 @@ public class SkTokenService {
 
     public void delete(Long id) {
         skTokenMapper.deleteByPrimaryKey(id);
+    }
+
+    /**
+     * 生成每日车次的令牌
+     *
+     * @param trainCode
+     * @param date
+     */
+    public void genSkToken(String trainCode, Date date) {
+        SkTokenExample skTokenExample = new SkTokenExample();
+        skTokenExample.createCriteria().andDateEqualTo(date).andTrainCodeEqualTo(trainCode);
+        long count = skTokenMapper.countByExample(skTokenExample);
+        if (count > 0) {
+            //删除原有的车次令牌
+            skTokenMapper.deleteByExample(skTokenExample);
+        }
+        SkToken skToken = new SkToken();
+        skToken.setId(SnowFlowUtil.getSnowFlowId());
+        skToken.setDate(date);
+        skToken.setTrainCode(trainCode);
+        skToken.setCreateTime(DateTime.now());
+        skToken.setUpdateTime(DateTime.now());
+        int trainStationsNums = trainStationService.getStationsByTrainCode(trainCode).size();
+        Integer totalSeatsNums = trainCarriageService.getTotalSeatsNums(trainCode);
+        Integer seatCount = (int) ((trainStationsNums - 1) * totalSeatsNums * 0.75);
+        skToken.setCount(seatCount);
+        skTokenMapper.insert(skToken);
     }
 }

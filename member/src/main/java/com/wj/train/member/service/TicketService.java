@@ -46,7 +46,10 @@ public class TicketService {
         TicketExample ticketExample = new TicketExample();
         ticketExample.setOrderByClause("train_date desc,train_code asc,carriage_index asc,seat_row asc");
         TicketExample.Criteria criteria = ticketExample.createCriteria();
-        criteria.andMemberIdEqualTo(req.getMemberId());
+        Long memberId = req.getMemberId();
+        if (ObjectUtil.isNotNull(memberId)) {
+            criteria.andMemberIdEqualTo(memberId);
+        }
         LOG.info("查询页码：{}", req.getPage());
         LOG.info("每页条数：{}", req.getSize());
         PageHelper.startPage(req.getPage(), req.getSize());

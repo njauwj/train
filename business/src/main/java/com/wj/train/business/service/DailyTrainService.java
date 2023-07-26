@@ -52,6 +52,9 @@ public class DailyTrainService {
     @Resource
     private DailyTrainTicketService dailyTrainTicketService;
 
+    @Resource
+    private SkTokenService skTokenService;
+
     public void save(DailyTrainSaveReq req) {
         DateTime now = DateTime.now();
         DailyTrain dailyTrain = BeanUtil.copyProperties(req, DailyTrain.class);
@@ -133,16 +136,19 @@ public class DailyTrainService {
         //先删除原有的每日车次数据
         dailyTrainMapper.deleteByExample(dailyTrainExample);
         for (Train train : trains) {
+            String trainCode = train.getCode();
             log.info("开始生成{}的车次数据", date);
             genDailyTrain(train, date);
-            log.info("开始生成{}的车次{}的车站数据", date, train.getCode());
+            log.info("开始生成{}的车次{}的车站数据", date, trainCode);
             dailyTrainStationService.genDailyStations(train, date);
-            log.info("开始生成{}的车次{}的车厢数据", date, train.getCode());
+            log.info("开始生成{}的车次{}的车厢数据", date, trainCode);
             dailyTrainCarriageService.genDailyCarriages(train, date);
-            log.info("开始生成{}的车次{}的座位数据", date, train.getCode());
+            log.info("开始生成{}的车次{}的座位数据", date, trainCode);
             dailyTrainSeatService.genDailySeats(train, date);
-            log.info("开始生成{}的车次{}的座位票数数据", date, train.getCode());
-            dailyTrainTicketService.genDailyTickets(train.getCode(), date, train.getType());
+            log.info("开始生成{}的车次{}的座位票数数据", date, trainCode);
+            dailyTrainTicketService.genDailyTickets(trainCode, date, train.getType());
+            log.info("开始生成{}的车次{}的座位令牌数据", date, trainCode);
+            skTokenService.genSkToken(trainCode, date);
         }
     }
 
