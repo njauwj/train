@@ -5,6 +5,7 @@ import com.wj.train.common.resp.CommonResp;
 import jakarta.validation.Valid;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
  * @description
  */
 //@FeignClient(name = "member", url = "http://localhost:8001/member")
-@FeignClient(name = "member")
+@FeignClient(name = "member", fallback = MemberFallback.class)
 @Component
 public interface MemberFeign {
 
@@ -27,4 +28,8 @@ public interface MemberFeign {
      */
     @PostMapping("/member/admin/ticket/save")
     CommonResp<Object> save(@Valid @RequestBody TicketSaveReq req);
+
+
+    @GetMapping("/member/hello")
+    String hello();
 }

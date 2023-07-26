@@ -18,8 +18,10 @@ spring:
           min-idle: 1
           time-between-eviction-runs: 10
   cloud:
+    openfeign: #feign.sentinel.enabled改为true后不加会报错
+      lazy-attributes-resolution: true
     sentinel:
-      transport:
+      transport: #启用sentinel控制台
         port: 8719
         dashboard: localhost:18080
       datasource:
@@ -28,8 +30,15 @@ spring:
             server-addr: localhost:8848
             namespace: train
             group-id: DEFAULT_GROUP
-            data-id: sentinel
-            rule-type: flow
+            data-id: sentinel-flow
+            rule-type: flow #限流
+        degrade: # 这个可以随意
+          nacos:
+            server-addr: localhost:8848
+            namespace: train
+            group-id: DEFAULT_GROUP
+            data-id: sentinel-degrade
+            rule-type: degrade #熔断
   # 数据库连接
   datasource:
     url: jdbc:mysql://localhost:3307/train_business?characterEncoding=UTF8&autoReconnect=true&serverTimezone=Asia/Shanghai
@@ -44,6 +53,7 @@ logging:
 
 mybatis:
   mapper-locations: classpath:/mapper/**/*.xml
-
-
+feign:
+  sentinel:
+    enabled: true #sentinel默认不监控feign
 
