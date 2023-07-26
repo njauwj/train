@@ -30,6 +30,7 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -72,6 +73,8 @@ public class ConfirmOrderService {
     @Resource
     private SkTokenService skTokenService;
 
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     public void save(ConfirmOrderSaveReq req) {
         DateTime now = DateTime.now();
@@ -130,8 +133,19 @@ public class ConfirmOrderService {
      */
     @SentinelResource(value = "confirmOrderService")
     public void confirmOrder(ConfirmOrderSaveReq confirmOrderSaveReq) {
+
+        //校验图形验证码是否正确
+        String imageCodeToken = confirmOrderSaveReq.getImageCodeToken();
+        String imageCode = confirmOrderSaveReq.getImageCode();
+        String actualCode = stringRedisTemplate.opsForValue().get(imageCodeToken);
+        if (CharSequenceUtil.isBlank(actualCode)) {
+            throw new BusinessException(BUSINESS_IMAGE_CODE_EXPIRED);
+        }
+        if (!actualCode.equals(imageCode)) {
+            throw new BusinessException(BUSINESS_IMAGE_CODE_ERROR);
+        }
         log.info("尝试获取令牌");
-        skTokenService.takeSkTone(confirmOrderSaveReq.getTrainCode(),confirmOrderSaveReq.getDate(),confirmOrderSaveReq.getMemberId());
+        skTokenService.takeSkTone(confirmOrderSaveReq.getTrainCode(), confirmOrderSaveReq.getDate(), confirmOrderSaveReq.getMemberId());
         String key = "confirmOrder:" + confirmOrderSaveReq.getDate() + confirmOrderSaveReq.getTrainCode();
         RLock lock = redissonClient.getLock(key);
         try {

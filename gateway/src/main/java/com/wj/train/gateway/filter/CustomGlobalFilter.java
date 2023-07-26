@@ -30,7 +30,8 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
     private static final List<String> WHITE_REQUEST = Arrays.asList(
             "/member/member/send-code",
             "/member/member/login",
-            "/admin"
+            "/admin",
+            "/kaptcha"
     );
 
 
