@@ -17,11 +17,9 @@ public enum BusinessExceptionEnum {
 
     BUSINESS_CONFIRM_ORDER_BUSY("系统繁忙，请稍后重试"),
 
-    BUSINESS_TOO_MANY_PEOPLE("当前车次购票人数太多，请稍后重试")
+    BUSINESS_TOO_MANY_PEOPLE("当前车次购票人数太多，请稍后重试"),
 
-
-
-    ;
+    BUSINESS_SK_TOKEN_INIT_ERROR("令牌数量未初始化");
     private String desc;
 
     BusinessExceptionEnum(String desc) {

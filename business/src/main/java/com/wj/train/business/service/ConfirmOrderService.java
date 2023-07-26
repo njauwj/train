@@ -69,6 +69,9 @@ public class ConfirmOrderService {
     @Resource
     private RedissonClient redissonClient;
 
+    @Resource
+    private SkTokenService skTokenService;
+
 
     public void save(ConfirmOrderSaveReq req) {
         DateTime now = DateTime.now();
@@ -127,7 +130,9 @@ public class ConfirmOrderService {
      */
     @SentinelResource(value = "confirmOrderService")
     public void confirmOrder(ConfirmOrderSaveReq confirmOrderSaveReq) {
-        String key = confirmOrderSaveReq.getDate() + confirmOrderSaveReq.getTrainCode();
+        log.info("尝试获取令牌");
+        skTokenService.takeSkTone(confirmOrderSaveReq.getTrainCode(),confirmOrderSaveReq.getDate(),confirmOrderSaveReq.getMemberId());
+        String key = "confirmOrder:" + confirmOrderSaveReq.getDate() + confirmOrderSaveReq.getTrainCode();
         RLock lock = redissonClient.getLock(key);
         try {
             boolean result = lock.tryLock(10, TimeUnit.SECONDS);
