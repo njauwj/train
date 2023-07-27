@@ -5,6 +5,12 @@ server:
 spring:
   application:
     name: business
+  rabbitmq:
+    addresses: 1.15.145.217
+    port: 5672
+    username: train
+    password: train
+    virtual-host: train
   data:
     redis:
       host: 1.15.145.217

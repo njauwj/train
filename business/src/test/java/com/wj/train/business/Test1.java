@@ -5,6 +5,7 @@ import com.wj.train.business.domain.TrainExample;
 import com.wj.train.business.mapper.TrainMapper;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
@@ -20,6 +21,9 @@ public class Test1 {
     @Resource
     private TrainMapper trainMapper;
 
+    @Resource
+    private RabbitTemplate rabbitTemplate;
+
     @Test
     void test1() {
         TrainExample trainExample = new TrainExample();
@@ -28,5 +32,11 @@ public class Test1 {
         List<Train> trains = trainMapper.selectByExample(trainExample);
         System.out.println(trains);
     }
+
+    @Test
+    void test2() {
+        rabbitTemplate.convertAndSend("confirmOrder.directExchange", "confirmOrder", "hello world");
+    }
+
 
 }
