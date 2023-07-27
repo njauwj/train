@@ -10,6 +10,7 @@ import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.wj.train.business.domain.*;
+import com.wj.train.business.dto.ConfirmOrderMqDto;
 import com.wj.train.business.enums.ConfirmOrderStatusEnum;
 import com.wj.train.business.enums.SeatColEnum;
 import com.wj.train.business.enums.SeatTypeEnum;
@@ -32,14 +33,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
+import static com.wj.train.business.enums.ConfirmOrderStatusEnum.INIT;
+import static com.wj.train.business.enums.ConfirmOrderStatusEnum.PENDING;
 import static com.wj.train.common.exception.BusinessExceptionEnum.*;
 
 @Service
@@ -75,8 +76,6 @@ public class ConfirmOrderService {
     @Resource
     private SkTokenService skTokenService;
 
-    @Resource
-    private StringRedisTemplate stringRedisTemplate;
 
     @Resource
     private RabbitTemplate rabbitTemplate;
@@ -162,94 +161,113 @@ public class ConfirmOrderService {
         //保存初始化确认订单信息
         confirmOrderMapper.insert(confirmOrder);
         //发送消息
-        String confirmOrderSaveReqStr = JSONUtil.toJsonStr(confirmOrderSaveReq);
-        Message message = new Message(confirmOrderSaveReqStr.getBytes());
+        ConfirmOrderMqDto confirmOrderMqDto = new ConfirmOrderMqDto();
+        confirmOrderMqDto.setTrainCode(confirmOrderSaveReq.getTrainCode());
+        confirmOrderMqDto.setDate(confirmOrderSaveReq.getDate());
+        String confirmOrderMqDtoStr = JSONUtil.toJsonStr(confirmOrderMqDto);
+        Message message = new Message(confirmOrderMqDtoStr.getBytes());
         rabbitTemplate.convertAndSend("confirmOrder.directExchange", "confirmOrder", message);
     }
 
-
-    /**
-     * @param confirmOrderSaveReq
-     */
-    @SentinelResource(value = "confirmOrderService")
-    public void confirmOrder(ConfirmOrderSaveReq confirmOrderSaveReq) {
-        String key = "confirmOrder:" + confirmOrderSaveReq.getDate() + confirmOrderSaveReq.getTrainCode();
-        RLock lock = redissonClient.getLock(key);
-        try {
-            boolean result = lock.tryLock(10, TimeUnit.SECONDS);
-            if (!result) {
-                throw new BusinessException(BUSINESS_TOO_MANY_PEOPLE);
-            }
-            Date date = confirmOrderSaveReq.getDate();
-            String trainCode = confirmOrderSaveReq.getTrainCode();
-            ConfirmOrderExample confirmOrderExample = new ConfirmOrderExample();
-            confirmOrderExample.createCriteria().andDateEqualTo(date).
-                    andTrainCodeEqualTo(trainCode).andMemberIdEqualTo(confirmOrderSaveReq.getMemberId());
+    public void handleMqMessage(ConfirmOrderMqDto confirmOrderMqDto) {
+        //查询同天同一车次的所有信息
+        Date date = confirmOrderMqDto.getDate();
+        String trainCode = confirmOrderMqDto.getTrainCode();
+        String lockKey = "confirmOrder:" + trainCode + ":" + date;
+        RLock lock = redissonClient.getLock(lockKey);
+        boolean tryLock = lock.tryLock();
+        if (!tryLock) {
+            log.info("当前车次订单正在处理,无需重复执行");
+            return;
+        }
+        ConfirmOrderExample confirmOrderExample = new ConfirmOrderExample();
+        confirmOrderExample.setOrderByClause("id asc");
+        confirmOrderExample.createCriteria().andDateEqualTo(date).
+                andTrainCodeEqualTo(trainCode).andStatusEqualTo(INIT.getCode());
+        while (true) {
+            PageHelper.startPage(1, 5);
             //selectByExampleWithBLOBs 才能查询大字段
             List<ConfirmOrder> confirmOrders = confirmOrderMapper.selectByExampleWithBLOBs(confirmOrderExample);
             if (confirmOrders.isEmpty()) {
-                throw new BusinessException(BUSINESS_CONFIRM_ORDER_INIT_ERROR);
+                log.info("没有要处理的订单");
+                break;
             }
-            ConfirmOrder confirmOrder = confirmOrders.get(0);
-            List<Ticket> tickets = JSONUtil.toList(confirmOrder.getTickets(), Ticket.class);
-            //查询余票
-            DailyTrainTicket dailyTrainTicket = dailyTrainTicketMapper.selectByPrimaryKey(confirmOrderSaveReq.getDailyTrainTicketId());
-            //预扣减库存
-            reduceTickets(confirmOrder, tickets, dailyTrainTicket);
-            //查看用户是否选座
-            String seat = tickets.get(0).getSeat();
-            //存储最终地选座结果
-            ArrayList<DailyTrainSeat> finalChooseSeats = new ArrayList<>();
-            if (CharSequenceUtil.isNotBlank(seat)) {
-                //有选座，要求是前后连续两排，同车厢，同类型的座位
-                log.info("本次购票有选座");
-                String seatTypeCode = tickets.get(0).getSeatTypeCode();
-                List<SeatColEnum> colsByType = SeatColEnum.getColsByType(seatTypeCode);
-                //构造出前后连续的两排
-                ArrayList<String> cowList = new ArrayList<>();
-                for (int i = 1; i <= 2; i++) {
-                    for (SeatColEnum seatColEnum : colsByType) {
-                        cowList.add(seatColEnum.getCode() + i);
-                    }
-                }
-                log.info("前后两排座位{}", cowList);
-                //计算选中座位的绝对偏移值
-                ArrayList<Integer> absoluteOffset = new ArrayList<>();
-                for (Ticket ticket : tickets) {
-                    int index = cowList.indexOf(ticket.getSeat());
-                    absoluteOffset.add(index);
-                }
-                log.info("选中座位的绝对偏移值{}", absoluteOffset);
-                //计算与第一个座位的相对偏移值
-                ArrayList<Integer> relativeOffset = new ArrayList<>();
-                for (Integer offset : absoluteOffset) {
-                    relativeOffset.add(offset - absoluteOffset.get(0));
-                }
-                log.info("选中座位的相对偏移值{}", relativeOffset);
-                // seat.substring(0, 1) A1 -> A
-                chooseSeat(finalChooseSeats, trainCode, date, seatTypeCode, seat.substring(0, 1), relativeOffset, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
-            } else {
-                //没有选座,直接遍历所有车厢座位进行选座
-                log.info("本次购票没有选座");
-                for (Ticket ticket : tickets) {
-                    chooseSeat(finalChooseSeats, trainCode, date, ticket.getSeatTypeCode(), null, null, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
+            for (ConfirmOrder confirmOrder : confirmOrders) {
+                try {
+                    confirmOrder.setStatus(PENDING.getCode());
+                    doConfirmOrder(confirmOrder);
+                } catch (Exception e) {//不能由于一张出票异常终止整个出票流程
+                    log.info("{},出票出现异常", confirmOrder);
                 }
             }
-            try {
-                confirmOrderService.updateFinalDataToDB(confirmOrderSaveReq, trainCode, date, confirmOrder, tickets, dailyTrainTicket, finalChooseSeats);
-            } catch (Exception e) {
-                confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
-                confirmOrder.setUpdateTime(DateTime.now());
-                confirmOrderMapper.updateByPrimaryKey(confirmOrder);
-                throw new BusinessException(BUSINESS_CONFIRM_ORDER_BUSY);
+        }
+    }
+
+    /**
+     * @param
+     */
+    @SentinelResource(value = "confirmOrderService")
+    public void doConfirmOrder(ConfirmOrder confirmOrder) {
+        String trainCode = confirmOrder.getTrainCode();
+        Date date = confirmOrder.getDate();
+        List<Ticket> tickets = JSONUtil.toList(confirmOrder.getTickets(), Ticket.class);
+        //查询余票
+        DailyTrainTicket dailyTrainTicket = dailyTrainTicketMapper.selectByPrimaryKey(confirmOrder.getDailyTrainTicketId());
+        //预扣减库存
+        try {
+            prepareReduceTickets(tickets, dailyTrainTicket);
+        } catch (BusinessException e) {
+            log.info("{}余票不足", dailyTrainTicket.getId());
+            confirmOrder.setStatus(ConfirmOrderStatusEnum.EMPTY.getCode());
+            confirmOrderMapper.updateByPrimaryKey(confirmOrder);
+            return;
+        }
+        //查看用户是否选座
+        String seat = tickets.get(0).getSeat();
+        //存储最终地选座结果
+        ArrayList<DailyTrainSeat> finalChooseSeats = new ArrayList<>();
+        if (CharSequenceUtil.isNotBlank(seat)) {
+            //有选座，要求是前后连续两排，同车厢，同类型的座位
+            log.info("本次购票有选座");
+            String seatTypeCode = tickets.get(0).getSeatTypeCode();
+            List<SeatColEnum> colsByType = SeatColEnum.getColsByType(seatTypeCode);
+            //构造出前后连续的两排
+            ArrayList<String> cowList = new ArrayList<>();
+            for (int i = 1; i <= 2; i++) {
+                for (SeatColEnum seatColEnum : colsByType) {
+                    cowList.add(seatColEnum.getCode() + i);
+                }
             }
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } finally {
-            if (lock.isHeldByCurrentThread()) {
-                log.info("释放锁");
-                lock.unlock();
+            log.info("前后两排座位{}", cowList);
+            //计算选中座位的绝对偏移值
+            ArrayList<Integer> absoluteOffset = new ArrayList<>();
+            for (Ticket ticket : tickets) {
+                int index = cowList.indexOf(ticket.getSeat());
+                absoluteOffset.add(index);
             }
+            log.info("选中座位的绝对偏移值{}", absoluteOffset);
+            //计算与第一个座位的相对偏移值
+            ArrayList<Integer> relativeOffset = new ArrayList<>();
+            for (Integer offset : absoluteOffset) {
+                relativeOffset.add(offset - absoluteOffset.get(0));
+            }
+            log.info("选中座位的相对偏移值{}", relativeOffset);
+            // seat.substring(0, 1) A1 -> A
+            chooseSeat(finalChooseSeats, trainCode, date, seatTypeCode, seat.substring(0, 1), relativeOffset, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
+        } else {
+            //没有选座,直接遍历所有车厢座位进行选座
+            log.info("本次购票没有选座");
+            for (Ticket ticket : tickets) {
+                chooseSeat(finalChooseSeats, trainCode, date, ticket.getSeatTypeCode(), null, null, dailyTrainTicket.getStartIndex(), dailyTrainTicket.getEndIndex());
+            }
+        }
+        try {
+            confirmOrderService.updateFinalDataToDB(trainCode, date, confirmOrder, tickets, dailyTrainTicket, finalChooseSeats);
+        } catch (Exception e) {
+            confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
+            confirmOrder.setUpdateTime(DateTime.now());
+            confirmOrderMapper.updateByPrimaryKey(confirmOrder);
+            throw new BusinessException(BUSINESS_CONFIRM_ORDER_BUSY);
         }
 
 
@@ -259,7 +277,7 @@ public class ConfirmOrderService {
      * 保存座位的详情数据，车站车票的扣减，购票信息至数据库
      * 由于涉及不同数据库之间的调用，所以需要使用分布式事务
      *
-     * @param confirmOrderSaveReq
+     * @param
      * @param trainCode
      * @param date
      * @param confirmOrder
@@ -268,21 +286,14 @@ public class ConfirmOrderService {
      * @param finalChooseSeats
      */
 //    @GlobalTransactional
-    public void updateFinalDataToDB(ConfirmOrderSaveReq confirmOrderSaveReq, String trainCode, Date date, ConfirmOrder confirmOrder, List<Ticket> tickets, DailyTrainTicket dailyTrainTicket, ArrayList<DailyTrainSeat> finalChooseSeats) {
+    public void updateFinalDataToDB(String trainCode, Date date, ConfirmOrder confirmOrder, List<Ticket> tickets, DailyTrainTicket dailyTrainTicket, ArrayList<DailyTrainSeat> finalChooseSeats) {
 
-//        log.info("seata全局事务ID: {}", RootContext.getXID());
         log.info("保存最终的选座结果至数据库，并扣减车票数量");
         updateFinalChooseSeatsToDb(dailyTrainTicket, finalChooseSeats);
-        //更待订单状态由初始->成功
-        ConfirmOrder finalCOnfirmOrder = new ConfirmOrder();
-        finalCOnfirmOrder.setId(confirmOrder.getId());
-        finalCOnfirmOrder.setStatus(ConfirmOrderStatusEnum.SUCCESS.getCode());
-        finalCOnfirmOrder.setUpdateTime(DateTime.now());
-        confirmOrderMapper.updateByPrimaryKeySelective(finalCOnfirmOrder);
         //保存会员购票信息
         for (int i = 0; i < finalChooseSeats.size(); i++) {
             TicketSaveReq ticketSaveReq = new TicketSaveReq();
-            ticketSaveReq.setMemberId(confirmOrderSaveReq.getMemberId());
+            ticketSaveReq.setMemberId(confirmOrder.getMemberId());
             ticketSaveReq.setPassengerId(tickets.get(i).getPassengerId());
             ticketSaveReq.setPassengerName(tickets.get(i).getPassengerName());
             ticketSaveReq.setTrainDate(date);
@@ -297,6 +308,12 @@ public class ConfirmOrderService {
             ticketSaveReq.setSeatType(finalChooseSeats.get(i).getSeatType());
             memberFeign.save(ticketSaveReq);
         }
+        //更待订单状态由初始->成功
+        ConfirmOrder finalCOnfirmOrder = new ConfirmOrder();
+        finalCOnfirmOrder.setId(confirmOrder.getId());
+        finalCOnfirmOrder.setStatus(ConfirmOrderStatusEnum.SUCCESS.getCode());
+        finalCOnfirmOrder.setUpdateTime(DateTime.now());
+        confirmOrderMapper.updateByPrimaryKeySelective(finalCOnfirmOrder);
     }
 
 
@@ -499,11 +516,11 @@ public class ConfirmOrderService {
     /**
      * 预扣减库存
      *
-     * @param confirmOrder
+     * @param
      * @param tickets
      * @param dailyTrainTicket
      */
-    private static void reduceTickets(ConfirmOrder confirmOrder, List<Ticket> tickets, DailyTrainTicket dailyTrainTicket) {
+    private static void prepareReduceTickets(List<Ticket> tickets, DailyTrainTicket dailyTrainTicket) {
         for (Ticket ticket : tickets) {
             String seatTypeCode = ticket.getSeatTypeCode();
             SeatTypeEnum seatTypeEnum = EnumUtil.getBy(SeatTypeEnum::getCode, seatTypeCode);
@@ -513,7 +530,6 @@ public class ConfirmOrderService {
                     Integer ydz = dailyTrainTicket.getYdz();
                     if (ydz <= 0) {
                         log.error("一等座余票不足");
-                        confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
                         throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
                     }
                     dailyTrainTicket.setYdz(ydz - 1);
@@ -523,7 +539,6 @@ public class ConfirmOrderService {
                     Integer edz = dailyTrainTicket.getEdz();
                     if (edz <= 0) {
                         log.error("二等座余票不足");
-                        confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
                         throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
                     }
                     dailyTrainTicket.setYdz(edz - 1);
@@ -533,7 +548,6 @@ public class ConfirmOrderService {
                     Integer rw = dailyTrainTicket.getRw();
                     if (rw <= 0) {
                         log.error("软卧余票不足");
-                        confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
                         throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
                     }
                     dailyTrainTicket.setYdz(rw - 1);
@@ -543,7 +557,6 @@ public class ConfirmOrderService {
                     Integer yw = dailyTrainTicket.getYw();
                     if (yw <= 0) {
                         log.error("硬卧余票不足");
-                        confirmOrder.setStatus(ConfirmOrderStatusEnum.FAILURE.getCode());
                         throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
                     }
                     dailyTrainTicket.setYdz(yw - 1);

@@ -1,7 +1,7 @@
 package com.wj.train.business.listner;
 
 import cn.hutool.json.JSONUtil;
-import com.wj.train.business.req.ConfirmOrderSaveReq;
+import com.wj.train.business.dto.ConfirmOrderMqDto;
 import com.wj.train.business.service.ConfirmOrderService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -26,11 +26,10 @@ public class RabbitmqListener {
     public void confirmOrderListener(Message message) {
         String msg = new String(message.getBody());
         log.info("confirmOrder.queue接收到消息{}", msg);
-        ConfirmOrderSaveReq confirmOrderSaveReq = JSONUtil.toBean(msg, ConfirmOrderSaveReq.class);
+        ConfirmOrderMqDto confirmOrderMqDto = JSONUtil.toBean(msg, ConfirmOrderMqDto.class);
         try {
-            confirmOrderService.confirmOrder(confirmOrderSaveReq);
+            confirmOrderService.handleMqMessage(confirmOrderMqDto);
         } catch (Exception e) {
-//            throw new BusinessException(BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR);
             log.info("异步处理出现错误{}", e.getMessage());
         }
     }
