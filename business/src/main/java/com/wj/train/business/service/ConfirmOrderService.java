@@ -30,6 +30,8 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -75,6 +77,9 @@ public class ConfirmOrderService {
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private RabbitTemplate rabbitTemplate;
 
     public void save(ConfirmOrderSaveReq req) {
         DateTime now = DateTime.now();
@@ -127,25 +132,47 @@ public class ConfirmOrderService {
 //        throw new BusinessException(BUSINESS_TOO_MANY_PEOPLE);
 //    }
 
+    /**
+     * 下单前的前置工作，包括图形验证码，获取令牌等操作，结束后给mq发一条消息，真正下单的操作异步去执行
+     *
+     * @param confirmOrderSaveReq
+     */
+    public void confirmOrderPre(ConfirmOrderSaveReq confirmOrderSaveReq) {
+        //校验图形验证码是否正确
+//        String imageCodeToken = confirmOrderSaveReq.getImageCodeToken();
+//        String imageCode = confirmOrderSaveReq.getImageCode();
+//        String actualCode = stringRedisTemplate.opsForValue().get(imageCodeToken);
+//        if (CharSequenceUtil.isBlank(actualCode)) {
+//            throw new BusinessException(BUSINESS_IMAGE_CODE_EXPIRED);
+//        }
+//        if (!actualCode.equals(imageCode)) {
+//            throw new BusinessException(BUSINESS_IMAGE_CODE_ERROR);
+//        }
+        log.info("尝试获取令牌");
+        skTokenService.takeSkTone(confirmOrderSaveReq.getTrainCode(), confirmOrderSaveReq.getDate(), confirmOrderSaveReq.getMemberId());
+        DateTime now = DateTime.now();
+        ConfirmOrder confirmOrder = BeanUtil.copyProperties(confirmOrderSaveReq, ConfirmOrder.class);
+        List<Ticket> tickets = confirmOrderSaveReq.getTickets();
+        String ticketsJson = JSONUtil.toJsonStr(tickets);
+        confirmOrder.setTickets(ticketsJson);
+        confirmOrder.setId(SnowFlowUtil.getSnowFlowId());
+        confirmOrder.setStatus(ConfirmOrderStatusEnum.INIT.getCode());
+        confirmOrder.setCreateTime(now);
+        confirmOrder.setUpdateTime(now);
+        //保存初始化确认订单信息
+        confirmOrderMapper.insert(confirmOrder);
+        //发送消息
+        String confirmOrderSaveReqStr = JSONUtil.toJsonStr(confirmOrderSaveReq);
+        Message message = new Message(confirmOrderSaveReqStr.getBytes());
+        rabbitTemplate.convertAndSend("confirmOrder.directExchange", "confirmOrder", message);
+    }
+
 
     /**
      * @param confirmOrderSaveReq
      */
     @SentinelResource(value = "confirmOrderService")
     public void confirmOrder(ConfirmOrderSaveReq confirmOrderSaveReq) {
-
-        //校验图形验证码是否正确
-        String imageCodeToken = confirmOrderSaveReq.getImageCodeToken();
-        String imageCode = confirmOrderSaveReq.getImageCode();
-        String actualCode = stringRedisTemplate.opsForValue().get(imageCodeToken);
-        if (CharSequenceUtil.isBlank(actualCode)) {
-            throw new BusinessException(BUSINESS_IMAGE_CODE_EXPIRED);
-        }
-        if (!actualCode.equals(imageCode)) {
-            throw new BusinessException(BUSINESS_IMAGE_CODE_ERROR);
-        }
-        log.info("尝试获取令牌");
-        skTokenService.takeSkTone(confirmOrderSaveReq.getTrainCode(), confirmOrderSaveReq.getDate(), confirmOrderSaveReq.getMemberId());
         String key = "confirmOrder:" + confirmOrderSaveReq.getDate() + confirmOrderSaveReq.getTrainCode();
         RLock lock = redissonClient.getLock(key);
         try {
@@ -153,19 +180,18 @@ public class ConfirmOrderService {
             if (!result) {
                 throw new BusinessException(BUSINESS_TOO_MANY_PEOPLE);
             }
-            DateTime now = DateTime.now();
-            String trainCode = confirmOrderSaveReq.getTrainCode();
             Date date = confirmOrderSaveReq.getDate();
-            ConfirmOrder confirmOrder = BeanUtil.copyProperties(confirmOrderSaveReq, ConfirmOrder.class);
-            List<Ticket> tickets = confirmOrderSaveReq.getTickets();
-            String ticketsJson = JSONUtil.toJsonStr(tickets);
-            confirmOrder.setTickets(ticketsJson);
-            confirmOrder.setId(SnowFlowUtil.getSnowFlowId());
-            confirmOrder.setStatus(ConfirmOrderStatusEnum.INIT.getCode());
-            confirmOrder.setCreateTime(now);
-            confirmOrder.setUpdateTime(now);
-            //保存初始化确认订单信息
-            confirmOrderMapper.insert(confirmOrder);
+            String trainCode = confirmOrderSaveReq.getTrainCode();
+            ConfirmOrderExample confirmOrderExample = new ConfirmOrderExample();
+            confirmOrderExample.createCriteria().andDateEqualTo(date).
+                    andTrainCodeEqualTo(trainCode).andMemberIdEqualTo(confirmOrderSaveReq.getMemberId());
+            //selectByExampleWithBLOBs 才能查询大字段
+            List<ConfirmOrder> confirmOrders = confirmOrderMapper.selectByExampleWithBLOBs(confirmOrderExample);
+            if (confirmOrders.isEmpty()) {
+                throw new BusinessException(BUSINESS_CONFIRM_ORDER_INIT_ERROR);
+            }
+            ConfirmOrder confirmOrder = confirmOrders.get(0);
+            List<Ticket> tickets = JSONUtil.toList(confirmOrder.getTickets(), Ticket.class);
             //查询余票
             DailyTrainTicket dailyTrainTicket = dailyTrainTicketMapper.selectByPrimaryKey(confirmOrderSaveReq.getDailyTrainTicketId());
             //预扣减库存
@@ -330,42 +356,46 @@ public class ConfirmOrderService {
                             .andStartIndexEqualTo(k).andEndIndexEqualTo(m + 1);
                     DailyTrainTicket dailyTrainTicketDB = dailyTrainTicketMapper.selectByExample(dailyTrainTicketExample).get(0);
                     SeatTypeEnum seatTypeEnum = EnumUtil.getBy(SeatTypeEnum::getCode, seatType);
-                    //预扣减余票
-                    switch (seatTypeEnum) {
-                        case YDZ: {
-                            DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
-                            updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
-                            updateDailyTrainTicket.setYdz(dailyTrainTicketDB.getYdz() - 1);
-                            updateDailyTrainTicket.setUpdateTime(DateTime.now());
-                            dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
-                            break;
-                        }
-                        case EDZ: {
-                            DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
-                            updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
-                            updateDailyTrainTicket.setEdz(dailyTrainTicketDB.getEdz() - 1);
-                            updateDailyTrainTicket.setUpdateTime(DateTime.now());
-                            dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
-                            break;
-                        }
-                        case RW: {
-                            DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
-                            updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
-                            updateDailyTrainTicket.setRw(dailyTrainTicketDB.getRw() - 1);
-                            updateDailyTrainTicket.setUpdateTime(DateTime.now());
-                            dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
-                            break;
-                        }
-                        case YW: {
-                            DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
-                            updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
-                            updateDailyTrainTicket.setYw(dailyTrainTicketDB.getYw() - 1);
-                            updateDailyTrainTicket.setUpdateTime(DateTime.now());
-                            dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
-                            break;
-                        }
-                    }
+                    //扣减余票
+                    reduceTicket(dailyTrainTicketDB, seatTypeEnum);
                 }
+            }
+        }
+    }
+
+    private void reduceTicket(DailyTrainTicket dailyTrainTicketDB, SeatTypeEnum seatTypeEnum) {
+        switch (seatTypeEnum) {
+            case YDZ: {
+                DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
+                updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
+                updateDailyTrainTicket.setYdz(dailyTrainTicketDB.getYdz() - 1);
+                updateDailyTrainTicket.setUpdateTime(DateTime.now());
+                dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
+                break;
+            }
+            case EDZ: {
+                DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
+                updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
+                updateDailyTrainTicket.setEdz(dailyTrainTicketDB.getEdz() - 1);
+                updateDailyTrainTicket.setUpdateTime(DateTime.now());
+                dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
+                break;
+            }
+            case RW: {
+                DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
+                updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
+                updateDailyTrainTicket.setRw(dailyTrainTicketDB.getRw() - 1);
+                updateDailyTrainTicket.setUpdateTime(DateTime.now());
+                dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
+                break;
+            }
+            case YW: {
+                DailyTrainTicket updateDailyTrainTicket = new DailyTrainTicket();
+                updateDailyTrainTicket.setId(dailyTrainTicketDB.getId());
+                updateDailyTrainTicket.setYw(dailyTrainTicketDB.getYw() - 1);
+                updateDailyTrainTicket.setUpdateTime(DateTime.now());
+                dailyTrainTicketMapper.updateByPrimaryKeySelective(updateDailyTrainTicket);
+                break;
             }
         }
     }

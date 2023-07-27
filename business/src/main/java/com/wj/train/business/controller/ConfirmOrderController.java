@@ -39,11 +39,11 @@ public class ConfirmOrderController {
     }
 
     @PostMapping("/do")
-    @SentinelResource(value = "confirmOrderController",blockHandler = "confirmOrderBlockHandler")
+    @SentinelResource(value = "confirmOrderController", blockHandler = "confirmOrderBlockHandler")
     public CommonResp<Object> confirmOrder(@RequestBody ConfirmOrderSaveReq confirmOrderSaveReq) {
         Long memberId = LocalContext.getMemberId();
         confirmOrderSaveReq.setMemberId(memberId);
-        confirmOrderService.confirmOrder(confirmOrderSaveReq);
+        confirmOrderService.confirmOrderPre(confirmOrderSaveReq);
         return RespUtil.success(true);
     }
 
