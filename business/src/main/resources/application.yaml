@@ -27,20 +27,20 @@ spring:
     openfeign: #feign.sentinel.enabled改为true后不加会报错
       lazy-attributes-resolution: true
     sentinel:
-      transport: #启用sentinel控制台
-        port: 8719
-        dashboard: localhost:18080
+      #      transport: #启用sentinel控制台
+      #        port: 8719
+      #        dashboard: localhost:18080
       datasource:
         flow: # 这个可以随意
           nacos:
-            server-addr: localhost:8848
+            server-addr: 60.204.140.21:8848
             namespace: train
             group-id: DEFAULT_GROUP
             data-id: sentinel-flow
             rule-type: flow #限流
         degrade: # 这个可以随意
           nacos:
-            server-addr: localhost:8848
+            server-addr: 60.204.140.21:8848
             namespace: train
             group-id: DEFAULT_GROUP
             data-id: sentinel-degrade
