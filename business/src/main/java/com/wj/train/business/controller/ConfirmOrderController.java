@@ -40,11 +40,11 @@ public class ConfirmOrderController {
 
     @PostMapping("/do")
     @SentinelResource(value = "confirmOrderController", blockHandler = "confirmOrderBlockHandler")
-    public CommonResp<Object> confirmOrder(@RequestBody ConfirmOrderSaveReq confirmOrderSaveReq) {
+    public CommonResp<String> confirmOrder(@RequestBody ConfirmOrderSaveReq confirmOrderSaveReq) {
         Long memberId = LocalContext.getMemberId();
         confirmOrderSaveReq.setMemberId(memberId);
-        confirmOrderService.confirmOrderPre(confirmOrderSaveReq);
-        return RespUtil.success(true);
+        Long confirmOrderId = confirmOrderService.confirmOrderPre(confirmOrderSaveReq);
+        return RespUtil.success(String.valueOf(confirmOrderId));
     }
 
     /**
@@ -53,6 +53,13 @@ public class ConfirmOrderController {
     public CommonResp<Object> confirmOrderBlockHandler(ConfirmOrderSaveReq confirmOrderSaveReq, BlockException blockException) {
         log.info("接口/confirm-order/do 触发限流降级");
         throw new BusinessException(BUSINESS_TOO_MANY_PEOPLE);
+    }
+
+
+    @GetMapping("/query-line-count/{id}")
+    public CommonResp<Integer> queryLineCount(@PathVariable Long id) {
+        Integer count = confirmOrderService.queryLineCount(id);
+        return RespUtil.success(count);
     }
 
 }

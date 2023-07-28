@@ -39,9 +39,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static com.wj.train.business.enums.ConfirmOrderStatusEnum.INIT;
-import static com.wj.train.business.enums.ConfirmOrderStatusEnum.PENDING;
-import static com.wj.train.common.exception.BusinessExceptionEnum.*;
+import static com.wj.train.business.enums.ConfirmOrderStatusEnum.*;
+import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_CONFIRM_ORDER_BUSY;
+import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR;
 
 @Service
 @Slf4j
@@ -136,7 +136,7 @@ public class ConfirmOrderService {
      *
      * @param confirmOrderSaveReq
      */
-    public void confirmOrderPre(ConfirmOrderSaveReq confirmOrderSaveReq) {
+    public Long confirmOrderPre(ConfirmOrderSaveReq confirmOrderSaveReq) {
         //校验图形验证码是否正确
 //        String imageCodeToken = confirmOrderSaveReq.getImageCodeToken();
 //        String imageCode = confirmOrderSaveReq.getImageCode();
@@ -167,6 +167,7 @@ public class ConfirmOrderService {
         String confirmOrderMqDtoStr = JSONUtil.toJsonStr(confirmOrderMqDto);
         Message message = new Message(confirmOrderMqDtoStr.getBytes());
         rabbitTemplate.convertAndSend("confirmOrder.directExchange", "confirmOrder", message);
+        return confirmOrder.getId();
     }
 
     public void handleMqMessage(ConfirmOrderMqDto confirmOrderMqDto) {
@@ -197,6 +198,8 @@ public class ConfirmOrderService {
                     confirmOrder.setStatus(PENDING.getCode());
                     doConfirmOrder(confirmOrder);
                 } catch (Exception e) {//不能由于一张出票异常终止整个出票流程
+                    confirmOrder.setStatus(FAILURE.getCode());
+                    confirmOrderMapper.updateByPrimaryKey(confirmOrder);
                     log.info("{},出票出现异常", confirmOrder);
                 }
             }
@@ -567,4 +570,35 @@ public class ConfirmOrderService {
     }
 
 
+    /**
+     * 轮询计算排队的人数
+     *
+     * @param id confirmOrderId
+     * @return
+     */
+    public Integer queryLineCount(Long id) {
+        ConfirmOrder confirmOrder = confirmOrderMapper.selectByPrimaryKey(id);
+        Date date = confirmOrder.getDate();
+        String trainCode = confirmOrder.getTrainCode();
+        String status = confirmOrder.getStatus();
+        switch (status) {
+            case "P":
+                return 0;
+            case "S":
+                return -1;
+            case "F":
+                return -2;
+            case "E":
+                return -3;
+            case "I": {
+                ConfirmOrderExample confirmOrderExample = new ConfirmOrderExample();
+                confirmOrderExample.setOrderByClause("id asc");
+                confirmOrderExample.createCriteria().andDateEqualTo(date)
+                        .andTrainCodeEqualTo(trainCode).andStatusEqualTo(INIT.getCode()).andIdLessThan(id);
+                return (int) confirmOrderMapper.countByExample(confirmOrderExample);
+            }
+            default:
+                return -4;
+        }
+    }
 }
