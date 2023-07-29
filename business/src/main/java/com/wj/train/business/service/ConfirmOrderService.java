@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -40,8 +41,7 @@ import java.util.Date;
 import java.util.List;
 
 import static com.wj.train.business.enums.ConfirmOrderStatusEnum.*;
-import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_CONFIRM_ORDER_BUSY;
-import static com.wj.train.common.exception.BusinessExceptionEnum.BUSINESS_DAILY_TRAIN_TICKET_LACK_ERROR;
+import static com.wj.train.common.exception.BusinessExceptionEnum.*;
 
 @Service
 @Slf4j
@@ -79,6 +79,9 @@ public class ConfirmOrderService {
 
     @Resource
     private RabbitTemplate rabbitTemplate;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     public void save(ConfirmOrderSaveReq req) {
         DateTime now = DateTime.now();
@@ -138,28 +141,39 @@ public class ConfirmOrderService {
      */
     public Long confirmOrderPre(ConfirmOrderSaveReq confirmOrderSaveReq) {
         //校验图形验证码是否正确
-//        String imageCodeToken = confirmOrderSaveReq.getImageCodeToken();
-//        String imageCode = confirmOrderSaveReq.getImageCode();
-//        String actualCode = stringRedisTemplate.opsForValue().get(imageCodeToken);
-//        if (CharSequenceUtil.isBlank(actualCode)) {
-//            throw new BusinessException(BUSINESS_IMAGE_CODE_EXPIRED);
-//        }
-//        if (!actualCode.equals(imageCode)) {
-//            throw new BusinessException(BUSINESS_IMAGE_CODE_ERROR);
-//        }
-        log.info("尝试获取令牌");
-        skTokenService.takeSkTone(confirmOrderSaveReq.getTrainCode(), confirmOrderSaveReq.getDate(), confirmOrderSaveReq.getMemberId());
-        DateTime now = DateTime.now();
-        ConfirmOrder confirmOrder = BeanUtil.copyProperties(confirmOrderSaveReq, ConfirmOrder.class);
-        List<Ticket> tickets = confirmOrderSaveReq.getTickets();
-        String ticketsJson = JSONUtil.toJsonStr(tickets);
-        confirmOrder.setTickets(ticketsJson);
-        confirmOrder.setId(SnowFlowUtil.getSnowFlowId());
-        confirmOrder.setStatus(ConfirmOrderStatusEnum.INIT.getCode());
-        confirmOrder.setCreateTime(now);
-        confirmOrder.setUpdateTime(now);
-        //保存初始化确认订单信息
-        confirmOrderMapper.insert(confirmOrder);
+        String imageCodeToken = confirmOrderSaveReq.getImageCodeToken();
+        String imageCode = confirmOrderSaveReq.getImageCode();
+        String actualCode = stringRedisTemplate.opsForValue().get(imageCodeToken);
+        if (CharSequenceUtil.isBlank(actualCode)) {
+            throw new BusinessException(BUSINESS_IMAGE_CODE_EXPIRED);
+        }
+        if (!actualCode.equals(imageCode)) {
+            throw new BusinessException(BUSINESS_IMAGE_CODE_ERROR);
+        }
+        int lineNumber = confirmOrderSaveReq.getLineNumber();
+        if (lineNumber < 0) {
+            throw new BusinessException(BUSINESS_PARAMS_ILLEGAL);
+        }
+        if (lineNumber >= 10) {
+            lineNumber = 10;
+        }
+        Long id = null;
+        for (int i = 0; i <= lineNumber; i++) {
+            log.info("尝试获取令牌");
+            skTokenService.takeSkTone(confirmOrderSaveReq.getTrainCode(), confirmOrderSaveReq.getDate(), confirmOrderSaveReq.getMemberId());
+            DateTime now = DateTime.now();
+            ConfirmOrder confirmOrder = BeanUtil.copyProperties(confirmOrderSaveReq, ConfirmOrder.class);
+            List<Ticket> tickets = confirmOrderSaveReq.getTickets();
+            String ticketsJson = JSONUtil.toJsonStr(tickets);
+            confirmOrder.setTickets(ticketsJson);
+            confirmOrder.setId(SnowFlowUtil.getSnowFlowId());
+            confirmOrder.setStatus(ConfirmOrderStatusEnum.INIT.getCode());
+            confirmOrder.setCreateTime(now);
+            confirmOrder.setUpdateTime(now);
+            //保存初始化确认订单信息
+            confirmOrderMapper.insert(confirmOrder);
+            id = confirmOrder.getId();
+        }
         //发送消息
         ConfirmOrderMqDto confirmOrderMqDto = new ConfirmOrderMqDto();
         confirmOrderMqDto.setTrainCode(confirmOrderSaveReq.getTrainCode());
@@ -167,7 +181,7 @@ public class ConfirmOrderService {
         String confirmOrderMqDtoStr = JSONUtil.toJsonStr(confirmOrderMqDto);
         Message message = new Message(confirmOrderMqDtoStr.getBytes());
         rabbitTemplate.convertAndSend("confirmOrder.directExchange", "confirmOrder", message);
-        return confirmOrder.getId();
+        return id;
     }
 
     public void handleMqMessage(ConfirmOrderMqDto confirmOrderMqDto) {
@@ -600,5 +614,19 @@ public class ConfirmOrderService {
             default:
                 return -4;
         }
+    }
+
+    /**
+     * 取消排队
+     *
+     * @param id
+     * @return
+     */
+    public Integer cancel(Long id) {
+        ConfirmOrderExample confirmOrderExample = new ConfirmOrderExample();
+        confirmOrderExample.createCriteria().andIdEqualTo(id).andStatusEqualTo(INIT.getCode());
+        ConfirmOrder confirmOrder = new ConfirmOrder();
+        confirmOrder.setStatus(CANCEL.getCode());
+        return confirmOrderMapper.updateByExampleSelective(confirmOrder, confirmOrderExample);
     }
 }

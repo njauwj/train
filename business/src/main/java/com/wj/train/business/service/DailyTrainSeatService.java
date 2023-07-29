@@ -11,6 +11,8 @@ import com.wj.train.business.domain.*;
 import com.wj.train.business.mapper.DailyTrainSeatMapper;
 import com.wj.train.business.req.DailyTrainSeatQueryReq;
 import com.wj.train.business.req.DailyTrainSeatSaveReq;
+import com.wj.train.business.req.SeatSellReq;
+import com.wj.train.business.req.SeatSellResp;
 import com.wj.train.business.resp.DailyTrainSeatQueryResp;
 import com.wj.train.common.resp.PageResp;
 import com.wj.train.common.utils.SnowFlowUtil;
@@ -134,4 +136,19 @@ public class DailyTrainSeatService {
         return dailyTrainSeatMapper.selectByExample(dailyTrainSeatExample);
     }
 
+    /**
+     * 座位售卖数据，用来展示座位售卖详情
+     *
+     * @param seatSellReq
+     * @return
+     */
+    public List<SeatSellResp> seatSellCondition(SeatSellReq seatSellReq) {
+        Date date = seatSellReq.getDate();
+        String trainCode = seatSellReq.getTrainCode();
+        DailyTrainSeatExample dailyTrainSeatExample = new DailyTrainSeatExample();
+        dailyTrainSeatExample.setOrderByClause("carriage_index asc,carriage_seat_index asc");
+        dailyTrainSeatExample.createCriteria().andDateEqualTo(date).andTrainCodeEqualTo(trainCode);
+        List<DailyTrainSeat> dailyTrainSeats = dailyTrainSeatMapper.selectByExample(dailyTrainSeatExample);
+        return BeanUtil.copyToList(dailyTrainSeats, SeatSellResp.class);
+    }
 }

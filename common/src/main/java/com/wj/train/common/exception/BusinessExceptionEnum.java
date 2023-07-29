@@ -24,9 +24,9 @@ public enum BusinessExceptionEnum {
     BUSINESS_IMAGE_CODE_EXPIRED("图形验证码过期"),
     BUSINESS_IMAGE_CODE_ERROR("图形验证码错误"),
 
-    BUSINESS_CONFIRM_ORDER_INIT_ERROR("车票初始化失败")
+    BUSINESS_CONFIRM_ORDER_INIT_ERROR("车票初始化失败"),
 
-    ;
+    BUSINESS_PARAMS_ILLEGAL("参数非法");
 
 
     private String desc;

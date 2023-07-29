@@ -4,3 +4,6 @@ Accept: application/json
 ###
 GET {{GATEWAY}}/business/admin/hello
 Accept: application/json
+
+###
+GET {{GATEWAY}}/business/seat

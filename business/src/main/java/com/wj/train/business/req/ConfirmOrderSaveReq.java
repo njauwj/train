@@ -77,16 +77,20 @@ public class ConfirmOrderSaveReq {
     private Date updateTime;
 
 
-//    /**
-//     * 验证码
-//     */
-//    @NotBlank(message = "【图片验证码】不能为空")
-//    private String imageCode;
-//
-//    /**
-//     * 图片验证码token
-//     */
-//    @NotBlank(message = "【图片验证码】参数非法")
-//    private String imageCodeToken;
+    /**
+     * 用于体验排队的功能
+     */
+    private int lineNumber;
+    /**
+     * 验证码
+     */
+    @NotBlank(message = "【图片验证码】不能为空")
+    private String imageCode;
+
+    /**
+     * 图片验证码token
+     */
+    @NotBlank(message = "【图片验证码】参数非法")
+    private String imageCodeToken;
 
 }

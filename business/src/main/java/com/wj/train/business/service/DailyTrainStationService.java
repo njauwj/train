@@ -6,7 +6,10 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.wj.train.business.domain.*;
+import com.wj.train.business.domain.DailyTrainStation;
+import com.wj.train.business.domain.DailyTrainStationExample;
+import com.wj.train.business.domain.Train;
+import com.wj.train.business.domain.TrainStation;
 import com.wj.train.business.mapper.DailyTrainStationMapper;
 import com.wj.train.business.req.DailyTrainStationQueryReq;
 import com.wj.train.business.req.DailyTrainStationSaveReq;
@@ -152,5 +155,21 @@ public class DailyTrainStationService {
         dailyTrainStation.setCreateTime(now);
         dailyTrainStation.setUpdateTime(now);
         dailyTrainStationMapper.insert(dailyTrainStation);
+    }
+
+    /**
+     * 查询每日车次的所有途径车站
+     *
+     * @param dailyTrainStationQueryReq
+     * @return
+     */
+    public List<DailyTrainStationQueryResp> queryByTrainCode(DailyTrainStationQueryReq dailyTrainStationQueryReq) {
+        String trainCode = dailyTrainStationQueryReq.getTrainCode();
+        Date date = dailyTrainStationQueryReq.getDate();
+        DailyTrainStationExample dailyTrainStationExample = new DailyTrainStationExample();
+        dailyTrainStationExample.setOrderByClause("`index` asc");
+        dailyTrainStationExample.createCriteria().andDateEqualTo(date).andTrainCodeEqualTo(trainCode);
+        List<DailyTrainStation> dailyTrainStations = dailyTrainStationMapper.selectByExample(dailyTrainStationExample);
+        return BeanUtil.copyToList(dailyTrainStations, DailyTrainStationQueryResp.class);
     }
 }
