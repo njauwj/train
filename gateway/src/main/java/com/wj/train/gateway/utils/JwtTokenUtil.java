@@ -2,6 +2,7 @@ package com.wj.train.gateway.utils;
 
 import cn.hutool.core.date.DateField;
 import cn.hutool.core.date.DateTime;
+import cn.hutool.crypto.GlobalBouncyCastleProvider;
 import cn.hutool.json.JSONObject;
 import cn.hutool.jwt.JWT;
 import cn.hutool.jwt.JWTUtil;
@@ -28,6 +29,7 @@ public class JwtTokenUtil {
      * @return
      */
     public static String createToken(Map<String, Object> payload) {
+        GlobalBouncyCastleProvider.setUseBouncyCastle(false);
         DateTime now = DateTime.now();
         DateTime expTime = now.offsetNew(DateField.HOUR, 24);
         // 签发时间
@@ -48,6 +50,7 @@ public class JwtTokenUtil {
      * @return
      */
     public static boolean validate(String token) {
+        GlobalBouncyCastleProvider.setUseBouncyCastle(false);
         try {
             JWT jwt = JWTUtil.parseToken(token).setKey(KEY.getBytes());
             // validate包含了verify
@@ -61,6 +64,7 @@ public class JwtTokenUtil {
     }
 
     public static JSONObject getJSONObject(String token) {
+        GlobalBouncyCastleProvider.setUseBouncyCastle(false);
         JWT jwt = JWTUtil.parseToken(token).setKey(KEY.getBytes());
         JSONObject payloads = jwt.getPayloads();
         payloads.remove(RegisteredPayload.ISSUED_AT);
