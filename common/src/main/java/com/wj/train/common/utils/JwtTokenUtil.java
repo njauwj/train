@@ -63,6 +63,12 @@ public class JwtTokenUtil {
         }
     }
 
+    /**
+     * 获取payload里的内容
+     *
+     * @param token
+     * @return
+     */
     public static JSONObject getJSONObject(String token) {
         GlobalBouncyCastleProvider.setUseBouncyCastle(false);
         if (!validate(token)) {

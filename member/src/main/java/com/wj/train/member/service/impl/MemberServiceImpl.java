@@ -15,6 +15,7 @@ import com.wj.train.member.req.MemberLoginReq;
 import com.wj.train.member.req.MemberSendCodeReq;
 import com.wj.train.member.resp.MemberLoginResp;
 import com.wj.train.member.service.MemberService;
+import com.wj.train.member.utils.AliyuncsUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RRateLimiter;
@@ -52,6 +53,9 @@ public class MemberServiceImpl implements MemberService {
 
     @Resource
     private RedissonClient redissonClient;
+
+    @Resource
+    private AliyuncsUtil aliyuncsUtil;
 
     /**
      * 用户注册
@@ -97,6 +101,7 @@ public class MemberServiceImpl implements MemberService {
         }
         //2. 生成验证码
         String code = RandomUtil.randomNumbers(4);
+        aliyuncsUtil.sendMessage(mobile, code);
         //3. TODO 发送验证码 可以对接第三方服务
         ValueOperations<String, String> ops = stringRedisTemplate.opsForValue();
         //TODO 先写死 8888 方便测试

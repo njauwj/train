@@ -9,7 +9,7 @@ Content-Type: application/json
 }
 
 ### 登入并将token保存到全局变量中方中
-POST {{GATEWAY}}/member/member/login
+POST {{MEMBER}}/member/member/login
 Content-Type: application/json
 
 {
