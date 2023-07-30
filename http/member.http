@@ -1,7 +1,7 @@
 
 
 ### 获取短信验证码
-POST {{GATEWAY}}/member/member/send-code
+POST {{MEMBER}}/member/member/send-code
 Content-Type: application/json
 
 {

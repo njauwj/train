@@ -14,11 +14,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class InterceptorConfig implements WebMvcConfigurer {
 
 
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new LoginInterceptor())
                 .order(0)
-                .addPathPatterns("/**")
-                .excludePathPatterns("/member/member/send-code", "/member/member/login");
+                .excludePathPatterns("/member/send-code", "/member/login");
     }
 }
